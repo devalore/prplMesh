@@ -784,6 +784,28 @@ bool mon_wlan_hal_dwpal::sta_link_measurements_11k_request(const std::string &st
     return true;
 }
 
+bool mon_wlan_hal_dwpal::associated_sta_link_metrics_request(const std::string &sta_mac)
+{
+    LOG(TRACE) << __func__;
+    std::shared_ptr<sAssociatedStaLinkMetricsResults> response(new sAssociatedStaLinkMetricsResults);
+    // auto mac = beerocks::net::network_utils::mac_from_string(sta_mac);
+
+    char *reply = nullptr;
+    char request[4 + 6*2 + 5 + 1] = {0}; // "STA " + mac + \0
+    strncpy(request, "STA ",          strlen("STA ") + 1);
+    strncat(request, sta_mac.c_str(), strlen("XX:XX:XX:XX:XX:XX"));
+
+    if (!dwpal_send_cmd(request, &reply)) {
+        LOG(ERROR) << __func__ << " failed";
+        return false;
+    }
+
+    LOG(DEBUG) << "hostapd reply: \n" << reply;
+
+    event_queue_push(Event::RRM_Associated_STA_Link_Metrics_Response, response);
+    return true;
+}
+
 bool mon_wlan_hal_dwpal::channel_scan_trigger(int dwell_time_msec,
                                               const std::vector<unsigned int> &channel_pool)
 {
