@@ -452,32 +452,41 @@ class test_flows:
             '{0x81 {0x00 0x00}}',
             '{0x82 {0x00 0x00}}',
         ])
+        """
+        Step 1: Trigger channel selection to channel 6 and 36. Check that
+                operating channel report was sent.
 
-        self.debug("Send channel selection request")
-        self.gateway_ucc.dev_send_1905(
-            self.mac_repeater1,
-            0x8006,
-            tlv(0x8B,0x005F, f'{self.mac_repeater1_wlan0} {payload_wlan0}'),
-            tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_empty}'),
-            tlv(0x8B,0x004C, f'{self.mac_repeater1_wlan2} {payload_wlan2}'),
-            tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_empty}')
-        )
-        time.sleep(1)
+        Step 2: Trigger channel selection to channel 6 and 36 again - check that
+                operating channel report is sent again. This is to catch bugs
+                when we don't send channel report when there is no need to
+                switch channel
+        """
+        for i in range(1, 3):
+            self.debug("Send channel selection request, step %i" % i)
+            self.gateway_ucc.dev_send_1905(
+                self.mac_repeater1,
+                0x8006,
+                tlv(0x8B,0x005F, f'{self.mac_repeater1_wlan0} {payload_wlan0}'),
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_empty}'),
+                tlv(0x8B,0x004C, f'{self.mac_repeater1_wlan2} {payload_wlan2}'),
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_empty}')
+            )
+            time.sleep(1)
 
-        self.debug("Confirming channel selection request has been received on agent")
+            self.debug("Confirming channel selection request has been received on agent step %i" % i)
 
-        self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_SELECTION_REQUEST_MESSAGE")
-        self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_SELECTION_REQUEST_MESSAGE")
+            self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_SELECTION_REQUEST_MESSAGE")
+            self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_SELECTION_REQUEST_MESSAGE")
 
-        self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit")
-        self.check_log(self.repeater1, "agent_wlan0", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
+            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit")
+            self.check_log(self.repeater1, "agent_wlan0", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
 
-        self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit")
-        self.check_log(self.repeater1, "agent_wlan2", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
-        self.check_log(self.repeater1, "agent_wlan0", "ACK_MESSAGE")
-        self.check_log(self.repeater1, "agent_wlan2", "ACK_MESSAGE")
+            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit")
+            self.check_log(self.repeater1, "agent_wlan2", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
+            self.check_log(self.repeater1, "agent_wlan0", "ACK_MESSAGE")
+            self.check_log(self.repeater1, "agent_wlan2", "ACK_MESSAGE")
 
-        self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
+            self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
 
     def test_ap_capability_query(self):
         self.gateway_ucc.dev_send_1905(self.mac_repeater1, 0x8001)
