@@ -77,3 +77,48 @@ test_client_steering_mandate                                                    
         check logs controller ACK_MESSAGE
         check logs controller STEERING_COMPLETED_MESSAGE
         check logs wlan0 ACK_MESSAGE
+
+test_client_steering_dummy                                                                                   | 5.8 4.8 (for dummy linux)
+        send BWL event to wlan0 EVENT AP-STA-CONNECTED
+        beerock CLI steer_client repeater1_wlan2
+        time.sleep(1)
+        check logs repeater 1 wlan2 Got client allow request
+        check logs repeater 1 wlan0 Got client disallow request
+        check logs repeater 2 wlan0 Got client disallow request
+        check logs repeater 2 wlan2 Got client disallow request
+        check logs repeater 1 wlan0 Got steer request
+        check logs controller CLIENT_STEERING_BTM_REPORT_MESSAGE
+        check logs repeater 1 wlan0 ACK_MESSAGE
+        send BWL event repeater 1 wlan0 EVENT AP-STA-DISCONNECTED
+        sleep 1
+        send BWL event repeater 1 wlan2 EVENT AP-STA-CONNECTED
+        check logs controller steering successful for sta
+        check logs controller disconnected due to steering request
+
+test_client_steering_policy                                                                                  | 5.8.2 4.8.2
+        send 0x8003 (Multi-AP Policy Config Request message) as Gateway to repeater 1
+        sleep(1)
+        check logs repeater 1 wlan0 "MULTI_AP_POLICY_CONFIG_REQUEST_MESSAGE"
+        sleep(1)
+        check logs controller ACK_MESSAGE, mid
+
+test_client_association                                                                                      | 5.4.1 4.4.1
+        send 0x0002 (1905 Topology Query message) to repeater 1 as Gateway
+        check logs repeater 1 agent TOPOLOGY_QUERY_MESSAGE
+        send 0x8016 (Client Association Control Request message) to repeater1 wlan0 as Gateway
+        check logs repeater 1 wlan0 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
+        check logs repeater 1 wlan2 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
+        check logs gateway controller ACK_MESSAGE
+
+test_higher_layer_data_payload_trigger                                                                       | 4.12.2 5.10.1
+        send 0x8018 (Higher Layer Data message) as Gateway to repeater 1
+        check log reapeater 1 agent HIGHER_LAYER_DATA_MESSAGE
+        check log reapeater 1 agent protocol
+        check log reapeater 1 agent payload_length
+        check log controller ACK_MESSAGE, mid=
+        # MCUT sends Higher Layer Data message to CTT Agent1 by providing:
+
+test_topology                                                                                                | part of 5.8.1 4.8.3
+        send 0x0002 (Topology Query message) as Gateway to repeater 1
+        check log repeater 1 agent TOPOLOGY_QUERY_MESSAGE
+
