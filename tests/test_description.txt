@@ -62,7 +62,7 @@ test_client_association_dummy                                                   
         beerocks CLI client_disallow wlan0
         check logs wlan0 Got client disallow request
 
-test_client_steering_mandate                                                                                |   5.8.1 4.8.3
+test_client_steering_mandate                                                                                |   5.8.1 4.8.1
         send 0x0002 (Topology Query message) as Gateway
         check logs wlan0 TOPOLOGY_QUERY_MESSAGE
         send 0x0002 (Topology Query message) as Gateway
@@ -110,7 +110,7 @@ test_client_association                                                         
         check logs repeater 1 wlan2 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
         check logs gateway controller ACK_MESSAGE
 
-test_higher_layer_data_payload_trigger                                                                       | 4.12.2 5.10.1
+test_higher_layer_data_payload_trigger                                                                       | 4.12.1 5.10.1
         send 0x8018 (Higher Layer Data message) as Gateway to repeater 1
         check log reapeater 1 agent HIGHER_LAYER_DATA_MESSAGE
         check log reapeater 1 agent protocol
