@@ -20,31 +20,31 @@ In addition, many certification tests include a configuration phase which is not
 
 | Certification test | test flow |
 | ------------------ | --------- |
-| 4.2.1 MAUT §5 Multi-AP Ethernet Onboarding and Initialization test |
+| 4.2.1 MAUT §5 Multi-AP Ethernet Onboarding and Initialization test | (channel_selection)
 | 4.2.2 MAUT §5.1/§5.2 Multi-AP Wi-Fi Onboarding and Initialization test 1 |
 | 4.2.3 MAUT §5.1/§5.2 Multi-AP Wi-Fi Onboarding and Initialization test 2 |
 | 4.3.1 MAUT §6.2 Supported Services Discovery test |
-| 4.3.2 MAUT §6.2/§6.3 Client association and disassociation test |
-| 4.4.1 MAUT §7.1/§7.2 Initial AP configuration test |
-| 4.4.2 MAUT §7.1/§7.2 AP configuration renew test | (ap_config_renew)
+| 4.3.2 MAUT §6.2/§6.3 Client association and disassociation test | (client_association_dummy) (client_association)
+| 4.4.1 MAUT §7.1/§7.2 Initial AP configuration test | (client_association_dummy)
+| 4.4.2 MAUT §7.1/§7.2 AP configuration renew test | (ap_config_renew) (ap_config_bss_tear_down)
 | 4.4.3 MAUT §7.1/§7.Two AP configuration BSS Tear Down test | (ap_config_bss_tear_down)
-| 4.5.1 MAUT §8.1 Channel Preference Query test |
+| 4.5.1 MAUT §8.1 Channel Preference Query test | (channel_selection)
 | 4.5.2 MAUT §8.2 Channel Selection Request Message test |
 | 4.5.3 MAUT §8.1 DFS Status update report test |
-| 4.6.1 MAUT §9.1 AP capability report test |
-| 4.6.2 MAUT §9.2 Client capability reporting test |
+| 4.6.1 MAUT §9.1 AP capability report test | (ap_capability_query)
+| 4.6.2 MAUT §9.2 Client capability reporting test | (client_capability_query)
 | 4.6.3 MAUT §9.2 Client capability query transmit test |
 | 4.7.1 MAUT §10.1 Backhaul Link Metric Query test - All Neighbors |
 | 4.7.2 MAUT §10.1 Backhaul Wi-Fi Link Metric Query test - Specific Neighbor |
 | 4.7.3 MAUT §10.1 Backhaul Ethernet Link Metric Query test - Specific Neighbor |
-| 4.7.4 MAUT §10.2 Per-AP Link Metrics Query Message test |
+| 4.7.4 MAUT §10.2 Per-AP Link Metrics Query Message test | (combined_infra_metrics)
 | 4.7.5 MAUT §10.2 Per-AP Metrics Response Message Controlled by AP Metrics Reporting Interval test |
 | 4.7.6 MAUT §10.2 Per-AP Metrics Response Controlled by AP Metrics Channel Utilization Reporting Threshold test |
 | 4.7.7 MAUT §10.3.1 Associated STA Link Metrics and Counters test |
 | 4.7.8 MAUT §10.3.2 Un-Associated STA RSSI Measurements test |
 | 4.7.9 MAUT §10.3.3 Beacon Report Query and Response test |
-| 4.8.1 MAUT §11.1 BTM-based Client Steering Mandate test |
-| 4.8.2 MAUT §11.1 Legacy Client Steering Mandate test |
+| 4.8.1 MAUT §11.1 BTM-based Client Steering Mandate test | (client_steering_mandate) (client_steering_dummy)
+| 4.8.2 MAUT §11.1 Legacy Client Steering Mandate test | (client_steering_policy)
 | 4.8.3 MAUT §11.2 Client Steering Opportunity test |
 | 4.8.4 MAUT §11.3.1 RCPI Policy-based Steering test |
 | 4.8.5 MAUT §11.6 Client Association Control test |
@@ -56,19 +56,19 @@ In addition, many certification tests include a configuration phase which is not
 | 4.10.5 MAUT §14 Data Passing test 5 (with MAUT between CTT Agent1 and CTT Agent 2) |
 | 4.10.6 MAUT §14 Data Passing test 6 (with a CTT STA connected to MAUT) |
 | 4.11.1 MAUT §15 Multi-AP Control Messaging Reliability test |
-| 4.12.1 MAUT §16 Higher layer data payload over 1905 trigger test |
+| 4.12.1 MAUT §16 Higher layer data payload over 1905 trigger test | (higher_layer_data_payload_trigger)
 | 4.12.2 MAUT §16 Higher layer data payload over 1905 test |
 | 5.3.1 MCUT §6.1/§6.2 Supported Services Discovery test |
-| 5.4.1 MCUT §7.1/§7.2 Initial AP configuration test |
+| 5.4.1 MCUT §7.1/§7.2 Initial AP configuration test | (client_association_dummy) (client_association)
 | 5.4.2 MCUT §7.1/§7.2 AP configuration renew test | ap_config_renew
 | 5.4.3 MCUT §7.1/§7.2 AP configuration BSS Tear Down test | ap_config_bss_tear_down
-| 5.5.1 MCUT §8 Channel Preference Query and Channel Selection Request Message test |
-| 5.6.1 MCUT §9.1 AP capability query test |
-| 5.6.2 MCUT §9.2 Client capability query test |
-| 5.7.1 MCUT §10.4 Combined Infrastructure Metrics test |
-| 5.8.1 MCUT §11 Client Steering for Steering Mandate and Steering Opportunity test |
-| 5.8.2 MCUT §11 Setting Client Steering Policy test |
+| 5.5.1 MCUT §8 Channel Preference Query and Channel Selection Request Message test | (channel_selection)
+| 5.6.1 MCUT §9.1 AP capability query test | (ap_capability_query)
+| 5.6.2 MCUT §9.2 Client capability query test | (client_capability_query)
+| 5.7.1 MCUT §10.4 Combined Infrastructure Metrics test | (combined_infra_metrics)
+| 5.8.1 MCUT §11 Client Steering for Steering Mandate and Steering Opportunity test | (client_steering_mandate) (client_steering_dummy)
+| 5.8.2 MCUT §11 Setting Client Steering Policy test | (client_steering_policy)
 | 5.8.3 MCUT §11 Client Association Control Message test |
-| 5.10.1 MCUT §16 Higher layer data payload over 1905 trigger test |
+| 5.10.1 MCUT §16 Higher layer data payload over 1905 trigger test | (higher_layer_data_payload_trigger)
 | 5.10.2 MCUT §16 Higher layer data payload over 1905 test |
 |
