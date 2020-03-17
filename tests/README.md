@@ -27,6 +27,11 @@ TODO fill in the details.
 - check log repeater 1 wlan0 message CHANNEL_SELECTION_REQUEST_MESSAGE received
 - check log repeater 1 wlan2 message CHANNEL_SELECTION_REQUEST_MESSAGE received
 
+### ap_capability_query
+- send 0x8001 (AP Capability Query message) to repeater 1 as Gateway
+- check log repeater 1 agent message AP_CAPABILITY_QUERY_MESSAGE received
+- check log controller AP_CAPABILITY_REPORT_MESSAGE received
+
 ### ...
 
 ## Mapping of certification tests
