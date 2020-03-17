@@ -67,6 +67,22 @@ TODO fill in the details.
 - beerocks CLI client_disallow repeater 1 wlan0
 - check logs repeater 1 wlan0 Got client disallow request
 
+### client_steering_mandate
+- send 0x0002 (Topology Query message) to repeater 1 as Gateway
+- check logs repeater 1 agent TOPOLOGY_QUERY_MESSAGE
+- send 0x0002 (Topology Query message) to repeater 2 as Gateway
+- check logs repeater 2 agent TOPOLOGY_QUERY_MESSAGE
+- send 0x8014 (Client Steering Request message) to repeater 1 as Gateway
+- check logs repeater 1 wlan0 Got steer request
+- check logs controller CLIENT_STEERING_BTM_REPORT_MESSAGE
+- check logs controller BTM_REPORT from source
+- check logs repeater 1 wlan0 ACK_MESSAGE
+- send 0x8014 (Client Steering Request message) to repeater 1 as Gateway
+- check logs repeater 1 wlan0 CLIENT_STEERING_REQUEST_MESSAGE
+- check logs controller ACK_MESSAGE
+- check logs controller STEERING_COMPLETED_MESSAGE
+- check logs repeater 1 wlan0 ACK_MESSAGE
+
 ### ...
 
 ## Mapping of certification tests
