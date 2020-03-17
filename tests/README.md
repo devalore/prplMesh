@@ -107,6 +107,14 @@ TODO fill in the details.
 - sleep 1
 - check logs controller ACK_MESSAGE, mid
 
+### client_association
+- send 0x0002 (1905 Topology Query message) to repeater 1 as Gateway
+- check logs repeater 1 agent TOPOLOGY_QUERY_MESSAGE
+- send 0x8016 (Client Association Control Request message) to repeater1 wlan0 as Gateway
+- check logs repeater 1 wlan0 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
+- check logs repeater 1 wlan2 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
+- check logs controller ACK_MESSAGE
+
 ### ...
 
 ## Mapping of certification tests
