@@ -100,6 +100,13 @@ TODO fill in the details.
 - check logs controller steering successful for sta
 - check logs controller disconnected due to steering request
 
+### client_steering_policy
+- send 0x8003 (Multi-AP Policy Config Request message) to repeater 1 as Gateway
+- sleep 1
+- check logs repeater 1 wlan0 "MULTI_AP_POLICY_CONFIG_REQUEST_MESSAGE"
+- sleep 1
+- check logs controller ACK_MESSAGE, mid
+
 ### ...
 
 ## Mapping of certification tests
