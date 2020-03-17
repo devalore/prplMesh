@@ -60,6 +60,13 @@ TODO fill in the details.
 - check logs controller Received CLIENT_CAPABILITY_REPORT_MESSAGE
 - check logs controller Result Code= SUCCESS, client MAC = `{sta_mac2}`
 
+### client_association_dummy
+- send BWL event repeater 1 wlan0 EVENT AP-STA-CONNECTED
+- beerocks CLI client_allow repeater 1 wlan2
+- check logs repeater 1 wlan2 Got client allow request
+- beerocks CLI client_disallow repeater 1 wlan0
+- check logs repeater 1 wlan0 Got client disallow request
+
 ### ...
 
 ## Mapping of certification tests
