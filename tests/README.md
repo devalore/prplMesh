@@ -11,6 +11,15 @@ TODO fill in the details.
 - check log wlan0 received credentials SSID 2 bss_type 1
 - check log wlan2 tear down radio
 
+### ap_config_bss_tear_down
+- send 0x0006 (1905 Topology Notification message) to repeater 1 as Gateway
+- sleep 3
+- check log repeater 1 wlan0 received credentials SSID 3 bss_type 2
+- check log repeater 1 wlan2 tear down radio
+- send 0x0006 (1905 Topology Notification message) to repeater 1 as Gateway
+- check log repeater 1 wlan2 tear down radio
+
+
 ### ...
 
 ## Mapping of certification tests
