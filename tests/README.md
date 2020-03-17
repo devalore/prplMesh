@@ -6,7 +6,7 @@ TODO fill in the details.
 
 ### ap_config_renew
 
-- send 0x0006 + 0x0001 + 2x 0x0001 (1905 Topology Notification message) to Gateway                    |
+- send 0x0006 + 0x0001 + 2x 0x0001 (1905 Topology Notification message) to Gateway
 - check log wlan0 received credentials SSID 1 bss_type 2
 - check log wlan0 received credentials SSID 2 bss_type 1
 - check log wlan2 tear down radio
@@ -19,6 +19,13 @@ TODO fill in the details.
 - send 0x0006 (1905 Topology Notification message) to repeater 1 as Gateway
 - check log repeater 1 wlan2 tear down radio
 
+### channel_selection
+- send 0x8004 (Channel Preference Query message) to repeater 1 as Gateway
+- check log repeater 1 wlan0 message CHANNEL_PREFERENCE_QUERY_MESSAGE received
+- check log repeater 1 wlan2 message CHANNEL_PREFERENCE_QUERY_MESSAGE received
+- send 0x8006 (Channel Selection Request message) to repeater 1 as Gateway
+- check log repeater 1 wlan0 message CHANNEL_SELECTION_REQUEST_MESSAGE received
+- check log repeater 1 wlan2 message CHANNEL_SELECTION_REQUEST_MESSAGE received
 
 ### ...
 
