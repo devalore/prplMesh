@@ -83,6 +83,23 @@ TODO fill in the details.
 - check logs controller STEERING_COMPLETED_MESSAGE
 - check logs repeater 1 wlan0 ACK_MESSAGE
 
+### client_steering_dummy
+- send BWL event to repeater 1 wlan0 EVENT AP-STA-CONNECTED
+- beerock CLI steer_client repeater1_wlan2
+- sleep(1)
+- check logs repeater 1 wlan2 Got client allow request
+- check logs repeater 1 wlan0 Got client disallow request
+- check logs repeater 2 wlan0 Got client disallow request
+- check logs repeater 2 wlan2 Got client disallow request
+- check logs repeater 1 wlan0 Got steer request
+- check logs controller CLIENT_STEERING_BTM_REPORT_MESSAGE
+- check logs repeater 1 wlan0 ACK_MESSAGE
+- send BWL event repeater 1 wlan0 EVENT AP-STA-DISCONNECTED
+- sleep 1
+- send BWL event repeater 1 wlan2 EVENT AP-STA-CONNECTED
+- check logs controller steering successful for sta
+- check logs controller disconnected due to steering request
+
 ### ...
 
 ## Mapping of certification tests
