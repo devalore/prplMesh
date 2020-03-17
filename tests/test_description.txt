@@ -1,0 +1,79 @@
+test_flows                                                                                                      Cert
+------------------------------------------------------------------------------------------------------------|
+test_ap_config_renew                                                                                        |   4.4.1
+        send 0x0006 + 0x0001 + 2x 0x0001 (1905 Topology Notification message) to Gateway                    |
+        check log wlan0 received credentials SSID 1 bss_type 2
+        check log wlan0 received credentials SSID 2 bss_type 1
+        check log wlan2 tear down radio
+
+test_ap_config_bss_tear_down                                                                                |   4.4.3 4.4.2
+        send 0x0006 + 0x001 + 2x 0x0001 (1905 Topology Notification message) to Gateway
+        sleep 3
+        check log wlan0 received credentials SSID 3 bss_type 2
+        check log wlan2 tear down radio
+        send 0x0006 + 0x001 + 2x 0x0001 (1905 Topology Notification message) to Gateway
+        check log wlan2 tear down radio
+
+test_channel_selection                                                                                      |   4.5.1 5.5.1 4.2.1
+        send 0x8004 (Channel Preference Query message) to Gateway
+        check log wlan0 message CHANNEL_PREFERENCE_QUERY_MESSAGE received
+        check log wlan2 message CHANNEL_PREFERENCE_QUERY_MESSAGE received
+        send 0x8006 (Channel Selection Request message) to Gateway
+        check log wlan0 message CHANNEL_SELECTION_REQUEST_MESSAGE received
+        check log wlan2 message CHANNEL_SELECTION_REQUEST_MESSAGE received
+
+test_ap_capability_query                                                                                    |   5.6.1 4.6.1 (partially, no verification over report)
+        send 0x8001 (AP Capability Query message) to Gateway
+        check log agent message AP_CAPABILITY_QUERY_MESSAGE received
+        check log controller AP_CAPABILITY_REPORT_MESSAGE received
+
+test_combined_infra_metrics                                                                                 |   5.7.1 4.7.4
+        send 0x800B (AP Metrics Query Message) + 0x0007 (AP- Autoconfiguration Search message) as Gateway
+        check log wlan0 AP_METRICS_QUERY_MESSAGE message received
+        send 0x800C (AP Metrics Response message) as Repeater
+        check log controller AP_METRICS_RESPONSE_MESSAGE received
+        send 0x800B (AP Metrics Query Message) + 0x0007 (AP- Autoconfiguration Search message) as Gateway
+        check log wlan2 message AP_METRICS_QUERY_MESSAGE received
+        send 0x800C (AP Metrics Response message) as Repeater
+        check log controller AP_METRICS_RESPONSE_MESSAGE received
+        send 0x0005 as Gateway
+        check logs wlan0 Received LINK_METRIC_QUERY_MESSAGE
+        send 0x0006 as repeater 1
+        check logs controller Received LINK_METRIC_RESPONSE_MESSAGE
+        send 0x8013 (Combined Infrastructure Metrics message) as Gateway
+        check logs agent Received COMBINED_INFRASTRUCTURE_METRICS
+        check logs agent Received TLV_TRANSMITTER_LINK_METRIC
+        check logs agent Received TLV_RECEIVER_LINK_METRIC
+
+test_client_capability_query                                                                                |   5.6.2 4.6.2
+        send 0x8009 (Client Capability Query message) as Gateway to sta_mac1
+        check logs agent CLIENT_CAPABILITY_QUERY_MESSAGE
+        check logs controller Received CLIENT_CAPABILITY_REPORT_MESSAGE
+        check logs controller Result Code= FAILURE
+        send BWL event wlan0 EVENT AP-STA-CONNECTED
+        send 0x8009 (Client Capability Query message) as Gateway to sta_mac2
+        check logs controller Received CLIENT_CAPABILITY_REPORT_MESSAGE
+        check logs controller Result Code= SUCCESS
+
+test_client_association_dummy                                                                               |   5.4.1? 4.3.2 4.4.1
+        send BWL event wlan0 EVENT AP-STA-CONNECTED
+        beerocks CLI client_allow wlan2
+        check logs wlan2 Got client allow request
+        beerocks CLI client_disallow wlan0
+        check logs wlan0 Got client disallow request
+
+test_client_steering_mandate                                                                                |   5.8.1 4.8.3
+        send 0x0002 (Topology Query message) as Gateway
+        check logs wlan0 TOPOLOGY_QUERY_MESSAGE
+        send 0x0002 (Topology Query message) as Gateway
+        check logs wlan2 TOPOLOGY_QUERY_MESSAGE
+        send 0x8014 (Client Steering Request message) as Gateway
+        check logs wlan0 Got steer request
+        check logs controller CLIENT_STEERING_BTM_REPORT_MESSAGE
+        check logs controller BTM_REPORT from source
+        check logs wlan0 ACK_MESSAGE
+        send 0x8014 (Client Steering Request message) as Gateway
+        check logs wlan0 CLIENT_STEERING_REQUEST_MESSAGE
+        check logs controller ACK_MESSAGE
+        check logs controller STEERING_COMPLETED_MESSAGE
+        check logs wlan0 ACK_MESSAGE
