@@ -115,6 +115,10 @@ TODO fill in the details.
 - check logs repeater 1 wlan2 CLIENT_ASSOCIATION_CONTROL_REQUEST_MESSAGE
 - check logs controller ACK_MESSAGE
 
+### topology
+- send 0x0002 (Topology Query message) to repeater 1 as Gateway 
+- check log repeater 1 agent TOPOLOGY_QUERY_MESSAGE
+
 ### ...
 
 ## Mapping of certification tests
