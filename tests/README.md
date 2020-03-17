@@ -50,6 +50,16 @@ TODO fill in the details.
 - check logs repeater 1 agent Received TLV_TRANSMITTER_LINK_METRIC
 - check logs repeater 1 agent Received TLV_RECEIVER_LINK_METRIC
 
+### client_capability_query
+- send 0x8009 (Client Capability Query message) as Gateway to repeater 1 with `{sta_mac1}`
+- check logs repeater 1 agent CLIENT_CAPABILITY_QUERY_MESSAGE
+- check logs controller Received CLIENT_CAPABILITY_REPORT_MESSAGE
+- check logs controller Result Code= FAILURE, client MAC = `{sta_mac1}`
+- send BWL event repeater 1 wlan0 EVENT AP-STA-CONNECTED `{sta_mac2}`
+- send 0x8009 (Client Capability Query message) as Gateway to `{sta_mac2}`
+- check logs controller Received CLIENT_CAPABILITY_REPORT_MESSAGE
+- check logs controller Result Code= SUCCESS, client MAC = `{sta_mac2}`
+
 ### ...
 
 ## Mapping of certification tests
