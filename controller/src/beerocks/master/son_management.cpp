@@ -309,8 +309,12 @@ void son_management::handle_cli_message(Socket *sd,
             network_utils::mac_from_string(hostap_mac);
         association_control_request_tlv->association_control() =
             wfa_map::tlvClientAssociationControlRequest::UNBLOCK;
-        //TODO: Get real validity_period_sec
-        association_control_request_tlv->validity_period_sec() = 1;
+        /*
+        According to section 11.6 in the Multi-AP Specification
+        The Validity Period field in a Client Association Control Request message 
+        with Association Control field set to 0x01 (Client Unblocking) is ignored
+        */
+        association_control_request_tlv->validity_period_sec() = 0;
         association_control_request_tlv->alloc_sta_list();
         auto sta_list         = association_control_request_tlv->sta_list(0);
         std::get<1>(sta_list) = network_utils::mac_from_string(client_mac);

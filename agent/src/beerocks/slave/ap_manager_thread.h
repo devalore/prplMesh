@@ -47,6 +47,11 @@ public:
         eBackhaulVapType type;
     };
 
+    struct disallowed_client_params_t {
+        sMacAddr mac;
+        sMacAddr bssid;
+    };
+
     enum eThreadErrors : uint32_t {
         APMANAGER_THREAD_ERROR_NO_ERROR            = 0,
         APMANAGER_THREAD_ERROR_HOSTAP_DISABLED     = 1,
@@ -81,6 +86,7 @@ private:
     bool low_filter;
     int bss_steer_valid_int;
     int bss_steer_imminent_valid_int;
+    std::map<std::chrono::steady_clock::time_point, disallowed_client_params_t> m_disallowed_client_timeouts;
 
     std::list<backhaul_vap_list_element_t> backhaul_vaps_list;
 

@@ -401,6 +401,35 @@ void ap_manager_thread::after_select(bool timeout)
                 now + std::chrono::seconds(HEARTBEAT_NOTIFICATION_DELAY_SEC);
         }
     }
+
+    // check if any client disallow period has expired
+    // in case it did we need to removed the client from blacklist
+    if (!m_disallowed_client_timeouts.empty()) {
+        // map key holds the disallow timout
+        // since its an ordered map check always the first element (lowest value)
+        auto it                          = m_disallowed_client_timeouts.begin();
+        const auto &sta_disallow_timeout = it->first;
+        if (std::chrono::steady_clock::now() > sta_disallow_timeout) {
+
+            LOG(DEBUG) << "CLIENT_ALLOW: mac = " << it->second.mac << ", bssid = " << it->second.bssid;
+            // send allow client msg to bssid
+            ap_wlan_hal->sta_allow(network_utils::mac_to_string(it->second.mac),
+                                   network_utils::mac_to_string(it->second.bssid));
+            // erase it from disallowed clients map
+            m_disallowed_client_timeouts.erase(it);
+
+            // print map
+            // LOG(DEBUG) << "Print m_disallowed_client_timeouts map";
+            // for (auto it = m_disallowed_client_timeouts.begin(); it != m_disallowed_client_timeouts.end(); it++) 
+            // {
+            //     LOG(DEBUG) << " STA mac " << it->second.mac << " bssid " << it->second.bssid
+            //             << " disallow timeout "
+            //             << std::chrono::duration_cast<std::chrono::seconds>(
+            //                     it->first - std::chrono::steady_clock::now())
+            //                     .count();
+            // }
+        }
+    }
 }
 
 bool ap_manager_thread::socket_disconnected(Socket *sd)
@@ -708,6 +737,51 @@ bool ap_manager_thread::handle_cmdu(Socket *sd, ieee1905_1::CmduMessageRx &cmdu_
         LOG(DEBUG) << "CLIENT_DISALLOW: mac = " << sta_mac << ", bssid = " << bssid;
 
         ap_wlan_hal->sta_deny(sta_mac, bssid);
+
+        // Check if validity period is set then add it to the "disallowed client timeouts" list
+        // This list will be polled in after_select()
+        // When validity period is timed out CLIENT_ALLOW message will be sent.
+        if (request->validity_period()) {
+
+            disallowed_client_params_t disallowed_client_params;
+            disallowed_client_params.mac   = request->mac();
+            disallowed_client_params.bssid = request->bssid();
+
+            // check if STA is already disallowed from this bssid
+            auto disallowed_client_timeout = std::find_if(m_disallowed_client_timeouts.begin(), m_disallowed_client_timeouts.end(),
+                        [&](const std::pair<std::chrono::steady_clock::time_point, disallowed_client_params_t> &element) {
+                            return ((element.second.mac == disallowed_client_params.mac) && (element.second.bssid == disallowed_client_params.bssid));
+                        });
+            if (disallowed_client_timeout != m_disallowed_client_timeouts.end()) {
+                // remove old disallow timeout from the list before inserting the new one
+                m_disallowed_client_timeouts.erase(disallowed_client_timeout);
+                LOG(DEBUG) << "remove old disallow timeout from the list before inserting the new one";
+            }
+
+            // calculate new disallow timeout from client validity period parameter [sec]
+            // when timeout expires allow message will be sent to the client.
+            auto disallow_timeout_in_sec =
+                std::chrono::steady_clock::now() + std::chrono::seconds(request->validity_period());
+            
+            LOG(DEBUG) << "insert new disallow timeout to the list";
+            // insert new disallow timeout to the list
+            m_disallowed_client_timeouts.insert(
+                std::pair<std::chrono::steady_clock::time_point, disallowed_client_params_t>(
+                    disallow_timeout_in_sec, disallowed_client_params));
+
+            //print map
+            // LOG(DEBUG) << "Print m_disallowed_client_timeouts map";
+            // for (auto it = m_disallowed_client_timeouts.begin(); it != m_disallowed_client_timeouts.end(); it++)
+            // {
+            //     LOG(DEBUG) << " STA mac " << it->second.mac << " bssid " << it->second.bssid
+            //                << " disallow timeout "
+            //                << std::chrono::duration_cast<std::chrono::seconds>(
+            //                       it->first - std::chrono::steady_clock::now())
+            //                       .count();
+            // }
+        } else {
+            LOG(WARNING) << "CLIENT_DISALLOW validity period set to 0, STA mac " << request->mac() << " will remain blocked from bssid " << request->bssid();
+        }
         break;
     }
     case beerocks_message::ACTION_APMANAGER_CLIENT_ALLOW_REQUEST: {
@@ -723,6 +797,17 @@ bool ap_manager_thread::handle_cmdu(Socket *sd, ieee1905_1::CmduMessageRx &cmdu_
         LOG(DEBUG) << "CLIENT_ALLOW: mac = " << sta_mac << ", bssid = " << bssid;
 
         ap_wlan_hal->sta_allow(sta_mac, bssid);
+
+        // check if STA is currently disallowed from this bssid and remove it from timeout list 
+        auto disallowed_client_timeout = std::find_if(m_disallowed_client_timeouts.begin(), m_disallowed_client_timeouts.end(),
+                    [&](const std::pair<std::chrono::steady_clock::time_point, disallowed_client_params_t> &element) {
+                        return ((element.second.mac == request->mac()) && (element.second.bssid == request->bssid()));
+                    });
+        if (disallowed_client_timeout != m_disallowed_client_timeouts.end()) {
+            // remove disallow timeout from the list
+            m_disallowed_client_timeouts.erase(disallowed_client_timeout);
+        }
+
         break;
     }
     case beerocks_message::ACTION_APMANAGER_READ_ACS_REPORT_REQUEST: {

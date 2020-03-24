@@ -4286,6 +4286,7 @@ bool slave_thread::handle_client_association_request(Socket *sd, ieee1905_1::Cmd
 
     const auto &bssid   = association_control_request_tlv->bssid_to_block_client();
     const auto &sta_mac = std::get<1>(association_control_request_tlv->sta_list(0));
+    const auto &validity_period = association_control_request_tlv->validity_period_sec();
 
     auto block = association_control_request_tlv->association_control();
     if (block == wfa_map::tlvClientAssociationControlRequest::UNBLOCK) {
@@ -4308,6 +4309,8 @@ bool slave_thread::handle_client_association_request(Socket *sd, ieee1905_1::Cmd
 
         request_out->mac()   = sta_mac;
         request_out->bssid() = bssid;
+        request_out->validity_period() = validity_period;
+
     }
 
     message_com::send_cmdu(ap_manager_socket, cmdu_tx);
