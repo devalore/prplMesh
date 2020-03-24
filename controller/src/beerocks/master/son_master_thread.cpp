@@ -3511,6 +3511,13 @@ bool master_thread::handle_cmdu_control_message(const std::string &src_mac,
     }
     case beerocks_message::ACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE: {
         LOG(TRACE) << "ACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE for mac " << hostap_mac;
+        // switch cACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE->result():
+        // case success:
+        //      log success
+        // case failure-scan-in-progress:
+        //      send event to task: scan already in progress
+        // case other_failure:
+        //      send event to task: failed to trigger scan
         break;
     }
     case beerocks_message::ACTION_CONTROL_CHANNEL_SCAN_DUMP_RESULTS_RESPONSE: {

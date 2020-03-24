@@ -1223,9 +1223,18 @@ bool monitor_thread::handle_cmdu(Socket *sd, ieee1905_1::CmduMessageRx &cmdu_rx)
             return false;
         }
 
+        // if (!mon_wlan_hal->scan_lock()) {
+        //     LOG(ERROR)
+        //         << "Failed to trigger a scan, scan is already in progress";
+        //     response_out->success() = enum::FAILURE_SCAN_IS_IN_PROGRESS;
+        //     message_com::send_cmdu(slave_socket, cmdu_tx);
+        //     break;
+        // }
+
         bool result = mon_wlan_hal->channel_scan_trigger(int(dwell_time_ms), channel_pool_vector);
         LOG_IF(!result, ERROR) << "channel_scan_trigger Failed";
 
+        // TODO: Adam - update cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE and related control CMDUs to have error as enum and not bool
         response_out->op_error_code() = uint8_t((result) ? eChannelScanOpErrCode::CHANNEL_SCAN_OP_SUCCESS : 
                                                            eChannelScanOpErrCode::CHANNEL_SCAN_OP_ERROR);
         message_com::send_cmdu(slave_socket, cmdu_tx);
@@ -1614,6 +1623,10 @@ bool monitor_thread::hal_event_handler(bwl::base_wlan_hal::hal_event_ptr_t event
         message_com::send_cmdu(slave_socket, cmdu_tx);
     } break;
     case Event::Channel_Scan_Finished: {
+        // if (!mon_wlan_hal->scan_unlock()) {
+        //     LOG(FATAL)
+        //         << "Failed to unlock channel scans";
+        // }
         auto notification = message_com::create_vs_message<
             beerocks_message::cACTION_MONITOR_CHANNEL_SCAN_FINISHED_NOTIFICATION>(cmdu_tx);
         if (!notification) {
@@ -1624,6 +1637,10 @@ bool monitor_thread::hal_event_handler(bwl::base_wlan_hal::hal_event_ptr_t event
         message_com::send_cmdu(slave_socket, cmdu_tx);
     } break;
     case Event::Channel_Scan_Abort: {
+        // if (!mon_wlan_hal->scan_unlock()) {
+        //     LOG(FATAL)
+        //         << "Failed to unlock channel scans";
+        // }
         auto notification = message_com::create_vs_message<
             beerocks_message::cACTION_MONITOR_CHANNEL_SCAN_ABORT_NOTIFICATION>(cmdu_tx);
         if (!notification) {
