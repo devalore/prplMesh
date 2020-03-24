@@ -16,6 +16,7 @@ from typing import Dict
 import json
 
 from capi import tlv, UCCSocket
+import environment as env
 from opts import debug, err, message, opts, status
 
 '''Regular expression to match a MAC address in a bytes string.'''
@@ -60,7 +61,6 @@ class TestFlows:
         self.rootdir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), '..'))
         self.installdir = os.path.join(self.rootdir, 'build', 'install')
         self.running = ''
-        self.tcpdump_proc = None
         self.bridge_name = 'br-lan'
 
     def fail(self, msg: str) -> bool:
@@ -77,54 +77,8 @@ class TestFlows:
         status(test + " starting")
 
     def tcpdump_start(self):
-        '''Start tcpdump if enabled by config.'''
-        if opts.tcpdump:
-            outputfile = os.path.join(self.rootdir, 'logs', 'test_{}.pcap'.format(self.running))
-            debug("Starting tcpdump, output file {}".format(outputfile))
-            docker_network = 'prplMesh-net-{}'.format(self.opts.unique_id)
-            docker_network_inspect_cmd = ('docker', 'network', 'inspect', docker_network)
-            inspect_result = subprocess.run(docker_network_inspect_cmd, stdout=subprocess.PIPE)
-            if inspect_result.returncode != 0:
-                # Assume network doesn't exist yet. Create it.
-                # This is normally done by test_gw_repeater.sh, but we need it earlier to be able to
-                # start tcpdump
-                # Raise an exception if it fails.
-                subprocess.run(('docker', 'network', 'create', docker_network), check=True,
-                               stdout=subprocess.DEVNULL)
-                # Inspect again, now raise if it fails.
-                inspect_result = subprocess.run(docker_network_inspect_cmd, check=True,
-                                                stdout=subprocess.PIPE)
-
-            inspect = json.loads(inspect_result.stdout)
-            prplmesh_net = inspect[0]
-            # podman adds a 'plugins' indirection that docker doesn't have.
-            if 'plugins' in prplmesh_net:
-                bridge = prplmesh_net['plugins'][0]['bridge']
-            else:
-                # docker doesn't report the interface name of the bridge. So format it based on the
-                # ID.
-                bridge_id = prplmesh_net['Id']
-                bridge = 'br-' + bridge_id[:12]
-
-            self.tcpdump_proc = subprocess.Popen(["tcpdump", "-i", bridge, "-w", outputfile], stderr=subprocess.PIPE)
-            # tcpdump takes a while to start up. Wait for the appropriate output before continuing.
-            # poll() so we exit the loop if tcpdump terminates for any reason.
-            while not self.tcpdump_proc.poll():
-                line = self.tcpdump_proc.stderr.readline()
-                debug(line.decode()[:-1]) # strip off newline
-                if line.startswith(b"tcpdump: listening on " + bridge.encode()):
-                    self.tcpdump_proc.stderr.close() # Make sure it doesn't block due to stderr buffering
-                    break
-            else:
-                err("tcpdump terminated")
-                self.tcpdump_proc = None
-
-    def tcpdump_kill(self):
-        '''Stop tcpdump if it is running.'''
-        if self.tcpdump_proc:
-            status("Terminating tcpdump")
-            self.tcpdump_proc.terminate()
-            self.tcpdump_proc = None
+        env.environment.tcpdump_start(os.path.join(self.rootdir, 'logs',
+                                                   'test_{}.pcap'.format(self.running)))
 
     def docker_command(self, device: str, *command: str) -> bytes:
         '''Execute `command` in docker container `device` and return its output.'''
@@ -178,6 +132,34 @@ class TestFlows:
         self.gateway = 'gateway-' + self.opts.unique_id
         self.repeater1 = 'repeater1-' + self.opts.unique_id
         self.repeater2 = 'repeater2-' + self.opts.unique_id
+
+        docker_network = 'prplMesh-net-{}'.format(self.opts.unique_id)
+        docker_network_inspect_cmd = ('docker', 'network', 'inspect', docker_network)
+        inspect_result = subprocess.run(docker_network_inspect_cmd, stdout=subprocess.PIPE)
+        if inspect_result.returncode != 0:
+            # Assume network doesn't exist yet. Create it.
+            # This is normally done by test_gw_repeater.sh, but we need it earlier to be able to
+            # start tcpdump
+            # Raise an exception if it fails.
+            subprocess.run(('docker', 'network', 'create', docker_network), check=True,
+                           stdout=subprocess.DEVNULL)
+            # Inspect again, now raise if it fails.
+            inspect_result = subprocess.run(docker_network_inspect_cmd, check=True,
+                                            stdout=subprocess.PIPE)
+
+        inspect = json.loads(inspect_result.stdout)
+        prplmesh_net = inspect[0]
+        # podman adds a 'plugins' indirection that docker doesn't have.
+        if 'plugins' in prplmesh_net:
+            bridge = prplmesh_net['plugins'][0]['bridge']
+        else:
+            # docker doesn't report the interface name of the bridge. So format it based on the
+            # ID.
+            bridge_id = prplmesh_net['Id']
+            bridge = 'br-' + bridge_id[:12]
+
+        env.environment = env.TestEnvironment(bridge)
+
         if not self.opts.skip_init:
             self.tcpdump_start()
             try:
@@ -185,7 +167,7 @@ class TestFlows:
                                        "-f", "-u", self.opts.unique_id, "-g", self.gateway,
                                        "-r", self.repeater1, "-r", self.repeater2, "-d", "7"))
             finally:
-                self.tcpdump_kill()
+                env.environment.tcpdump_kill()
 
         self.gateway_ucc = self.open_CAPI_socket(self.gateway, True)
         self.repeater1_ucc = self.open_CAPI_socket(self.repeater1)
@@ -268,7 +250,7 @@ class TestFlows:
             try:
                 getattr(self, 'test_' + test)()
             finally:
-                self.tcpdump_kill()
+                env.environment.tcpdump_kill()
             if self.check_error != 0:
                 err(test + " failed")
             else:
