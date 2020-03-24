@@ -14,6 +14,7 @@
 
 #define SCAN_TRIGGERED_WAIT_TIME_MSEC 20000     //20 Sec
 #define SCAN_RESULTS_DUMP_WAIT_TIME_MSEC 210000 //3.5 Min
+#define INTERVAL_BETWEEN_SCAN_RETRIES_MSEC 5000 //5 sec
 
 std::string s_ar_states[] = {FOREACH_DCS_STATE(GENERATE_STRING)};
 std::string s_ar_events[] = {FOREACH_DCS_EVENT(GENERATE_STRING)};
@@ -205,11 +206,20 @@ void dynamic_channel_selection_task::work()
     case eState::ABORT_SCAN: {
         LOG(ERROR) << "aborting scan for mac=" << m_radio_mac << ", last_scan_timestamp is not set";
 
-        database.set_channel_scan_results_status(m_radio_mac, m_last_scan_error_code,
-                                                 m_is_single_scan);
+        if (!m_wait_for_other_scan_to_complete) {
+            database.set_channel_scan_results_status(m_radio_mac, m_last_scan_error_code,
+                                                    m_is_single_scan);
+        }
         database.set_channel_scan_in_progress(m_radio_mac, false, m_is_single_scan);
         m_is_single_scan = false;
 
+        if (m_wait_for_other_scan_to_complete) {
+            LOG(ERROR) << "scan is already in progress, waiting before retry";
+            //last try failed due to scan in progress, wait before retrying in order to
+            //prevent load of requests
+            sleep(INTERVAL_BETWEEN_SCAN_RETRIES_MSEC);
+        }
+        m_wait_for_other_scan_to_complete = false;
         fsm_move_state(eState::IDLE);
         break;
     }
@@ -252,6 +262,11 @@ void dynamic_channel_selection_task::handle_event(int event_type, void *obj)
     }
     case eEvent::SCAN_ALREADY_IN_PROGRESS: {
         TASK_LOG(DEBUG) << "SCAN_ALREADY_IN_PROGRESS received";
+        if (fsm_in_state(eState::WAIT_FOR_SCAN_TRIGGERED)) {
+            m_wait_for_other_scan_to_complete = true;
+            clear_pending_events();
+            fsm_move_state(eState::ABORT_SCAN);
+        }
         break;
     }
     case eEvent::SCAN_TRIGGER_FAILED: {

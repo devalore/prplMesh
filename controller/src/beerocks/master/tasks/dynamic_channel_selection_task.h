@@ -92,6 +92,7 @@ private:
 
     bool m_is_single_scan_pending = false;
     bool m_is_single_scan         = false;
+    bool m_wait_for_other_scan_to_complete = false;
 };
 } //namespace son
 #endif
