@@ -1615,7 +1615,8 @@ class cACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE : public BaseClass
         static eActionOp_CONTROL get_action_op(){
             return (eActionOp_CONTROL)(ACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE);
         }
-        uint8_t& success();
+        //0 - Success, Otherwise error according to beerocks_defines:eChannelScanOpErrCode
+        uint8_t& op_error_code();
         void class_swap() override;
         bool finalize() override;
         static size_t get_initial_size();
@@ -1623,7 +1624,7 @@ class cACTION_CONTROL_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE : public BaseClass
     private:
         bool init();
         eActionOp_CONTROL* m_action_op = nullptr;
-        uint8_t* m_success = nullptr;
+        uint8_t* m_op_error_code = nullptr;
 };
 
 class cACTION_CONTROL_CHANNEL_SCAN_DUMP_RESULTS_REQUEST : public BaseClass

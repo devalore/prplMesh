@@ -2854,7 +2854,7 @@ bool slave_thread::handle_cmdu_monitor_message(Socket *sd,
             return false;
         }
 
-        response_out->success() = response_in->success();
+        response_out->op_error_code() = response_in->op_error_code();
         send_cmdu_to_controller(cmdu_tx);
         break;
     }

@@ -187,7 +187,9 @@ cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_REQUEST:
 
 cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE:
   _type: class
-  success: uint8_t
+  op_error_code:
+    _type: uint8_t
+    _comment: 0 - Success, Otherwise error according to beerocks_defines:eChannelScanOpErrCode
 
 cACTION_MONITOR_CHANNEL_SCAN_DUMP_RESULTS_REQUEST:
   _type: class

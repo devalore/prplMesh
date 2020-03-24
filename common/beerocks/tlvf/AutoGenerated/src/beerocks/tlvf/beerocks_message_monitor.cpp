@@ -2813,8 +2813,8 @@ BaseClass(base->getBuffPtr(), base->getBuffRemainingBytes(), parse){
 }
 cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::~cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE() {
 }
-uint8_t& cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::success() {
-    return (uint8_t&)(*m_success);
+uint8_t& cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::op_error_code() {
+    return (uint8_t&)(*m_op_error_code);
 }
 
 void cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::class_swap()
@@ -2852,7 +2852,7 @@ bool cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::finalize()
 size_t cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::get_initial_size()
 {
     size_t class_size = 0;
-    class_size += sizeof(uint8_t); // success
+    class_size += sizeof(uint8_t); // op_error_code
     return class_size;
 }
 
@@ -2862,7 +2862,7 @@ bool cACTION_MONITOR_CHANNEL_SCAN_TRIGGER_SCAN_RESPONSE::init()
         TLVF_LOG(ERROR) << "Not enough available space on buffer. Class init failed";
         return false;
     }
-    m_success = (uint8_t*)m_buff_ptr__;
+    m_op_error_code = (uint8_t*)m_buff_ptr__;
     if (!buffPtrIncrementSafe(sizeof(uint8_t))) {
         LOG(ERROR) << "buffPtrIncrementSafe(" << std::dec << sizeof(uint8_t) << ") Failed!";
         return false;
