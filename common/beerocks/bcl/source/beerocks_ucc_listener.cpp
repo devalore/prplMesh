@@ -350,6 +350,23 @@ bool beerocks_ucc_listener::get_send_1905_1_tlv_hex_list(
     return false;
 }
 
+static void set_relay_indicator(std::shared_ptr<ieee1905_1::cCmduHeader> &cmdu_header)
+{
+    // Taken from Table 6-4 on IEEE 1905.1-2013
+    auto message_type                                         = cmdu_header->message_type();
+    const std::set<ieee1905_1::eMessageType> relayed_messages = {
+        ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE,
+        ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_SEARCH_MESSAGE,
+        ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_RENEW_MESSAGE,
+        ieee1905_1::eMessageType::PUSH_BUTTON_EVENT_NOTIFICATION_MESSAGE,
+        ieee1905_1::eMessageType::PUSH_BUTTON_JOIN_NOTIFICATION_MESSAGE,
+    };
+
+    if (relayed_messages.find(message_type) != relayed_messages.end()) {
+        cmdu_header->flags().relay_indicator = true;
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 ////////////////////////// socket_thread functions ///////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -687,11 +704,14 @@ void beerocks_ucc_listener::handle_wfa_ca_command(const std::string &command)
             // CMDU was not loaded from preprepared buffer, and need to be created manually, and
             // use TLV data from the command (if exists)
             m_cmdu_tx.reset();
-            if (!cmdu_tx.create(g_mid, ieee1905_1::eMessageType(message_type))) {
+            auto cmdu_header = cmdu_tx.create(g_mid, ieee1905_1::eMessageType(message_type));
+            if (!cmdu_header) {
                 LOG(ERROR) << "cmdu creation of type 0x" << message_type_str << ", has failed";
                 reply_ucc(eWfaCaStatus::ERROR, err_internal);
                 break;
             }
+            // Set relay indicator if needed (according to message type).
+            set_relay_indicator(cmdu_header);
 
             // We need to fill in CmduMessage's class vector. However, we really don't care about
             // the classes, and we don't want any swapping to be done. Still, we need something
