@@ -199,6 +199,7 @@ private:
 
     sSlaveBackhaulParams backhaul_params;
     beerocks_message::sNodeHostap hostap_params;
+    std::vector<beerocks::message::sSupportedChannels> supported_channels;
     beerocks_message::sApChannelSwitch hostap_cs_params;
     std::vector<wireless_utils::sChannelPreference> channel_preferences;
 

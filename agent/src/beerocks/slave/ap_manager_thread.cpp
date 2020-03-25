@@ -52,6 +52,25 @@ static void copy_radio_supported_channels(std::shared_ptr<bwl::ap_wlan_hal> &ap_
     }
 }
 
+static void copy_hardware_supported_channels(
+        beerocks::message::sSupportedChannels supported_channels[])
+{
+    
+}
+static int8_t get_tx_power(std::shared_ptr<bwl::ap_wlan_hal> &ap_wlan_hal)
+{
+    auto radio_channels = ap_wlan_hal->get_radio_info().supported_channels;
+    uint8_t channel     = ap_wlan_hal->get_radio_info().channel;
+
+    for (uint8_t i = 0;
+         i < beerocks::message::SUPPORTED_CHANNELS_LENGTH && i < radio_channels.size(); i++) {
+        if (radio_channels[i].channel == channel)
+            return radio_channels[i].tx_pow;
+    }
+
+    return 0;
+}
+
 static std::string
 get_radio_supported_channels_string(std::shared_ptr<bwl::ap_wlan_hal> &ap_wlan_hal)
 {
@@ -1497,6 +1516,8 @@ void ap_manager_thread::handle_hostapd_attached()
 
     // Copy the channels supported by the AP
     copy_radio_supported_channels(ap_wlan_hal, notification->params().supported_channels);
+    auto tuple_supported_channels = notification->hardware_supported_channels(0);
+    copy_hardware_supported_channels(&std::get<1>(tuple_supported_channels));
 
     LOG(INFO) << "send ACTION_APMANAGER_JOINED_NOTIFICATION";
     LOG(INFO) << " mac = " << ap_wlan_hal->get_radio_mac();

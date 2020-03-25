@@ -27,6 +27,9 @@ cACTION_APMANAGER_JOINED_NOTIFICATION:
   _type: class
   params: sNodeHostap
   cs_params: sApChannelSwitch
+  hardware_supported_channels:
+    _type: beerocks::message::sSupportedChannels 
+    _length: [ "beerocks::message::SUPPORTED_CHANNELS_LENGTH" ]   
 
 cACTION_APMANAGER_ENABLE_APS_REQUEST:
   _type: class

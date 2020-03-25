@@ -1627,6 +1627,9 @@ bool slave_thread::handle_cmdu_ap_manager_message(Socket *sd,
         }
         hostap_params    = notification->params();
         hostap_cs_params = notification->cs_params();
+        for(int idx = 0;idx < beerocks::message::SUPPORTED_CHANNELS_LENGTH; idx++)
+            supported_channels.push_back(std::get<1>(notification->hardware_supported_channels(idx)));
+            
         if (slave_state == STATE_WAIT_FOR_AP_MANAGER_JOINED) {
             slave_state = STATE_AP_MANAGER_JOINED;
         } else {
@@ -3381,13 +3384,14 @@ bool slave_thread::slave_fsm(bool &call_slave_select)
             return false;
         }
 
-        std::array<beerocks::message::sWifiChannel, beerocks::message::SUPPORTED_CHANNELS_LENGTH>
-            supported_channels;
-        std::copy_n(std::begin(hostap_params.supported_channels), supported_channels.size(),
-                    supported_channels.begin());
+        std::array<beerocks::message::sSupportedChannels,
+                   beerocks::message::SUPPORTED_CHANNELS_LENGTH>
+            _supported_channels;
+        std::copy_n(std::begin(supported_channels), _supported_channels.size(),
+                    _supported_channels.begin());
 
         if (!tlvf_utils::add_ap_radio_basic_capabilities(cmdu_tx, hostap_params.iface_mac,
-                                                         supported_channels)) {
+                                                         _supported_channels)) {
             LOG(ERROR) << "Failed adding AP Radio Basic Capabilities TLV";
             return false;
         }

@@ -115,11 +115,23 @@ sApChannelSwitch& cACTION_APMANAGER_JOINED_NOTIFICATION::cs_params() {
     return (sApChannelSwitch&)(*m_cs_params);
 }
 
+std::tuple<bool, beerocks::message::sSupportedChannels&> cACTION_APMANAGER_JOINED_NOTIFICATION::hardware_supported_channels(size_t idx) {
+    bool ret_success = ( (m_hardware_supported_channels_idx__ > 0) && (m_hardware_supported_channels_idx__ > idx) );
+    size_t ret_idx = ret_success ? idx : 0;
+    if (!ret_success) {
+        TLVF_LOG(ERROR) << "Requested index is greater than the number of available entries";
+    }
+    return std::forward_as_tuple(ret_success, m_hardware_supported_channels[ret_idx]);
+}
+
 void cACTION_APMANAGER_JOINED_NOTIFICATION::class_swap()
 {
     tlvf_swap(8*sizeof(eActionOp_APMANAGER), reinterpret_cast<uint8_t*>(m_action_op));
     m_params->struct_swap();
     m_cs_params->struct_swap();
+    for (size_t i = 0; i < beerocks::message::SUPPORTED_CHANNELS_LENGTH; i++){
+        m_hardware_supported_channels[i].struct_swap();
+    }
 }
 
 bool cACTION_APMANAGER_JOINED_NOTIFICATION::finalize()
@@ -154,6 +166,7 @@ size_t cACTION_APMANAGER_JOINED_NOTIFICATION::get_initial_size()
     size_t class_size = 0;
     class_size += sizeof(sNodeHostap); // params
     class_size += sizeof(sApChannelSwitch); // cs_params
+    class_size += beerocks::message::SUPPORTED_CHANNELS_LENGTH * sizeof(beerocks::message::sSupportedChannels); // hardware_supported_channels
     return class_size;
 }
 
@@ -175,6 +188,15 @@ bool cACTION_APMANAGER_JOINED_NOTIFICATION::init()
         return false;
     }
     if (!m_parse__) { m_cs_params->struct_init(); }
+    m_hardware_supported_channels = (beerocks::message::sSupportedChannels*)m_buff_ptr__;
+    if (!buffPtrIncrementSafe(sizeof(beerocks::message::sSupportedChannels) * (beerocks::message::SUPPORTED_CHANNELS_LENGTH))) {
+        LOG(ERROR) << "buffPtrIncrementSafe(" << std::dec << sizeof(beerocks::message::sSupportedChannels) * (beerocks::message::SUPPORTED_CHANNELS_LENGTH) << ") Failed!";
+        return false;
+    }
+    m_hardware_supported_channels_idx__  = beerocks::message::SUPPORTED_CHANNELS_LENGTH;
+    if (!m_parse__) {
+        for (size_t i = 0; i < beerocks::message::SUPPORTED_CHANNELS_LENGTH; i++) { m_hardware_supported_channels->struct_init(); }
+    }
     if (m_parse__) { class_swap(); }
     return true;
 }

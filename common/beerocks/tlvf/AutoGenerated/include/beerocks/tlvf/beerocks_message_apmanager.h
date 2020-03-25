@@ -63,6 +63,7 @@ class cACTION_APMANAGER_JOINED_NOTIFICATION : public BaseClass
         }
         sNodeHostap& params();
         sApChannelSwitch& cs_params();
+        std::tuple<bool, beerocks::message::sSupportedChannels&> hardware_supported_channels(size_t idx);
         void class_swap() override;
         bool finalize() override;
         static size_t get_initial_size();
@@ -72,6 +73,9 @@ class cACTION_APMANAGER_JOINED_NOTIFICATION : public BaseClass
         eActionOp_APMANAGER* m_action_op = nullptr;
         sNodeHostap* m_params = nullptr;
         sApChannelSwitch* m_cs_params = nullptr;
+        beerocks::message::sSupportedChannels* m_hardware_supported_channels = nullptr;
+        size_t m_hardware_supported_channels_idx__ = 0;
+        int m_lock_order_counter__ = 0;
 };
 
 class cACTION_APMANAGER_ENABLE_APS_REQUEST : public BaseClass

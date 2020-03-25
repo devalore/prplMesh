@@ -114,6 +114,20 @@ typedef struct sWifiChannel {
     }
 } __attribute__((packed)) sWifiChannel;
 
+typedef struct sSupportedChannels {
+    uint8_t channel   = 0;
+    uint8_t tx_pow    = 0;
+    uint8_t bandwidth = 0;
+    sSupportedChannels(){};
+    void struct_swap() {}
+    void struct_init()
+    {
+        channel   = 0;
+        tx_pow    = 0;
+        bandwidth = 0;
+    }
+} __attribute__((packed)) sSupportedChannels;
+
 //////////////////// tlvf includes - END/////////////////////////////
 
 #define MACRO_IS_ENABLE                                                                            \

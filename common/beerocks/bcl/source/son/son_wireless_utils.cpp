@@ -66,6 +66,14 @@ static bool has_operating_class_channel(const sOperatingClass &oper_class,
     auto it = oper_class.channels.find(channel.channel);
     return it != oper_class.channels.end();
 }
+static bool has_operating_class_channel(const sOperatingClass &oper_class,
+                                        const beerocks::message::sSupportedChannels &channel)
+{
+    if (oper_class.band != channel.bandwidth)
+        return false;
+    auto it = oper_class.channels.find(channel.channel);
+    return it != oper_class.channels.end();
+}
 
 wireless_utils::sPhyUlParams
 wireless_utils::estimate_ul_params(int ul_rssi, uint16_t sta_phy_tx_rate_100kb,
@@ -607,7 +615,7 @@ wireless_utils::get_channel_preferences(const beerocks::message::sWifiChannel su
  * @return std::vector<uint8_t> vector of supported operating classes
  */
 std::vector<uint8_t> wireless_utils::get_supported_operating_classes(
-    const beerocks::message::sWifiChannel supported_channels[])
+    const beerocks::message::sSupportedChannels supported_channels[])
 {
     std::vector<uint8_t> operating_classes;
     //TODO handle regulatory domain operating classes
@@ -631,7 +639,7 @@ std::vector<uint8_t> wireless_utils::get_supported_operating_classes(
  * @return max tx power for requested operating class
  */
 uint8_t wireless_utils::get_operating_class_max_tx_power(
-    const beerocks::message::sWifiChannel supported_channels[], uint8_t operating_class)
+    const beerocks::message::sSupportedChannels supported_channels[], uint8_t operating_class)
 {
     uint8_t max_tx_power = 0;
     auto oper_class      = operating_classes_list.at(operating_class);
@@ -688,7 +696,7 @@ wireless_utils::get_operating_class_by_channel(const beerocks::message::sWifiCha
  * @return std::vector<uint8_t> vector of non operable channels
  */
 std::vector<uint8_t> wireless_utils::get_operating_class_non_oper_channels(
-    const beerocks::message::sWifiChannel supported_channels[], uint8_t operating_class)
+    const beerocks::message::sSupportedChannels supported_channels[], uint8_t operating_class)
 {
     std::vector<uint8_t> non_oper_channels;
     auto oper_class = operating_classes_list.at(operating_class);
@@ -697,7 +705,7 @@ std::vector<uint8_t> wireless_utils::get_operating_class_non_oper_channels(
         uint8_t found = 0;
         for (uint8_t i = 0; i < beerocks::message::SUPPORTED_CHANNELS_LENGTH; i++) {
             if (op_class_channel == supported_channels[i].channel &&
-                oper_class.band == supported_channels[i].channel_bandwidth) {
+                oper_class.band == supported_channels[i].bandwidth) {
                 found = 1;
                 break;
             }
