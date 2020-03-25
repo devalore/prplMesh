@@ -288,6 +288,22 @@ private:
                             std::map<std::string, std::vector<sMacAddr>> &neighbor_links_map);
 
     /*
+     * @brief List of known 1905 neighbor devices
+     * 
+     * key:     1905.1 device AL-MAC
+     * value:   s1905NeighborDevice
+     * Devices are being added to the list when receiving a 1905.1 Topology Discovery message from
+     * an unknown 1905.1 device. Every 1905.1 device shall send this message every 60 seconds, and
+     * we update the time stamp in which the message is received.
+     */
+    struct s1905NeighborDevice {
+        std::chrono::steady_clock::time_point last_seen;
+        sMacAddr local_iface_mac;
+        bool bridge_exist; // Not sure from where to take this information
+    };
+    std::unordered_map<sMacAddr, s1905NeighborDevice> m_1905_neighbor_devices;
+
+    /*
  * State Machines
  */
 private:
