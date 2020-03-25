@@ -401,57 +401,47 @@ class test_flows:
         self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_PREFERENCE_QUERY_MESSAGE")
         self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_PREFERENCE_QUERY_MESSAGE")
 
-        payload_empty="0x14"
+        # Send empty channel selection request
+        self.debug("Send empty channel selection request")
+        self.gateway_ucc.dev_send_1905(self.mac_repeater1,0x8006)
 
+        self.debug("Confirming empty channel selection request has been received on agent")
+        self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_SELECTION_REQUEST_MESSAGE")
+        self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_SELECTION_REQUEST_MESSAGE")
+
+        self.debug("Confirming OPERATING_CHANNEL_REPORT_MESSAGE message has been received on controller")
+        self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
+
+        # Send channel selection request with chnging tx_power_limit 
+        # Payload for transmit power - 20 for both radio
+        payload_transmit_power ="0x14"
+
+        for i in range(1, 3):
+            self.debug("Send empty channel selection request with changing tx_power_limit")
+            self.gateway_ucc.dev_send_1905(
+                self.mac_repeater1,
+                0x8006,
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_transmit_power}'),
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_transmit_power}')
+            )
+
+            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
+            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
+            self.check_log(self.gateway, "controller", "tx_power=%d" % int(payload_transmit_power,16))
+            self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
+            # Increase payload for transmit power - 21 for both radio
+            payload_transmit_power ="0x15"
+
+        # Payload for transmit power - 20 for both radio
+        payload_transmit_power ="0x14"
+
+        # Send channel selection request with payload
         # payload_wlan0 - request for change channel on 6
-        payload_wlan0=' '.join([
-            '0x14',
-            '{0x51 {0x0C {0x01 0x02 0x03 0x04 0x05 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D} 0x00}}',
-            '{0x52 {0x00 0x00}}',
-            '{0x53 {0x08 {0x01 0x02 0x03 0x04 0x05 0x07 0x08 0x09} 0x00}}',
-            '{0x54 {0x08 {0x05 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D} 0x00}}',
-            '{0x73 {0x00 0x00}}',
-            '{0x74 {0x00 0x00}}',
-            '{0x75 {0x00 0x00}}',
-            '{0x76 {0x00 0x00}}',
-            '{0x77 {0x00 0x00}}',
-            '{0x78 {0x00 0x00}}',
-            '{0x79 {0x00 0x00}}',
-            '{0x7A {0x00 0x00}}',
-            '{0x7B {0x00 0x00}}',
-            '{0x7C {0x00 0x00}}',
-            '{0x7D {0x00 0x00}}',
-            '{0x7E {0x00 0x00}}',
-            '{0x7F {0x00 0x00}}',
-            '{0x80 {0x00 0x00}}',
-            '{0x81 {0x00 0x00}}',
-            '{0x82 {0x00 0x00}}',
-        ])
+        payload_wlan0="0x14 {0x51 {0x0C {0x01 0x02 0x03 0x04 0x05 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D} 0x00}} {0x52 {0x00 0x00}} {0x53 {0x08 {0x01 0x02 0x03 0x04 0x05 0x07 0x08 0x09} 0x00}} {0x54 {0x08 {0x05 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D} 0x00}} {0x73 {0x00 0x00}} {0x74 {0x00 0x00}} {0x75 {0x00 0x00}} {0x76 {0x00 0x00}} {0x77 {0x00 0x00}} {0x78 {0x00 0x00}} {0x79 {0x00 0x00}} {0x7A {0x00 0x00}} {0x7B {0x00 0x00}} {0x7C {0x00 0x00}} {0x7D {0x00 0x00}} {0x7E {0x00 0x00}} {0x7F {0x00 0x00}} {0x80 {0x00 0x00}} {0x81 {0x00 0x00}} {0x82 {0x00 0x00}}"
 
         # payload_wlan2  - request for change channel on 36
-        payload_wlan2=' '.join([
-            '0x14',
-            '{0x51 {0x00 0x00}}',
-            '{0x52 {0x00 0x00}}',
-            '{0x53 {0x00 0x00}}',
-            '{0x54 {0x00 0x00}}',
-            '{0x73 0x03 {0x28 0x2C 0x30} 0x00}',
-            '{0x74 0x01 {0x2C} 0x00}',
-            '{0x75 {0x00 0x00}}',
-            '{0x76 {0x00 0x00}}',
-            '{0x77 {0x00 0x00}}',
-            '{0x78 {0x00 0x00}}',
-            '{0x79 {0x00 0x00}}',
-            '{0x7A {0x00 0x00}}',
-            '{0x7B {0x00 0x00}}',
-            '{0x7C {0x00 0x00}}',
-            '{0x7D {0x00 0x00}}',
-            '{0x7E {0x00 0x00}}',
-            '{0x7F {0x00 0x00}}',
-            '{0x80 0x05 {0x3A 0x6A 0x7A 0x8A 0x9B} 0x00}',
-            '{0x81 {0x00 0x00}}',
-            '{0x82 {0x00 0x00}}',
-        ])
+        payload_wlan2="0x14 {0x51 {0x00 0x00}} {0x52 {0x00 0x00}} {0x53 {0x00 0x00}} {0x54 {0x00 0x00}} {0x73 0x03 {0x28 0x2C 0x30} 0x00} {0x74 0x01 {0x2C} 0x00} {0x75 {0x00 0x00}} {0x76 {0x00 0x00}} {0x77 {0x00 0x00}} {0x78 {0x00 0x00}} {0x79 {0x00 0x00}} {0x7A {0x00 0x00}} {0x7B {0x00 0x00}} {0x7C {0x00 0x00}} {0x7D {0x00 0x00}} {0x7E {0x00 0x00}} {0x7F {0x00 0x00}} {0x80 0x05 {0x3A 0x6A 0x7A 0x8A 0x9B} 0x00} {0x81 {0x00 0x00}} {0x82 {0x00 0x00}}"
+
         """
         Step 1: Trigger channel selection to channel 6 and 36. Check that
                 operating channel report was sent.
@@ -467,26 +457,32 @@ class test_flows:
                 self.mac_repeater1,
                 0x8006,
                 tlv(0x8B,0x005F, f'{self.mac_repeater1_wlan0} {payload_wlan0}'),
-                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_empty}'),
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_transmit_power}'),
                 tlv(0x8B,0x004C, f'{self.mac_repeater1_wlan2} {payload_wlan2}'),
-                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_empty}')
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_transmit_power}')
             )
             time.sleep(1)
 
-            self.debug("Confirming channel selection request has been received on agent step %i" % i)
+            self.debug("Confirming channel selection request has been received on agent, step %i" % i)
 
             self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_SELECTION_REQUEST_MESSAGE")
             self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_SELECTION_REQUEST_MESSAGE")
 
-            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit")
+            self.debug("Confirming tlvTransmitPowerLimit has been received with correct value on agent, step %i" % i)
+            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
             self.check_log(self.repeater1, "agent_wlan0", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
-
-            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit")
+            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
             self.check_log(self.repeater1, "agent_wlan2", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
+
+            self.debug("Confirming ACK_MESSAGE has been received on agent, step %i" % i)
             self.check_log(self.repeater1, "agent_wlan0", "ACK_MESSAGE")
             self.check_log(self.repeater1, "agent_wlan2", "ACK_MESSAGE")
 
+            self.debug("Confirming OPERATING_CHANNEL_REPORT_MESSAGE has been received on controller step %i" % i)
             self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
+
+            self.debug("Confirming tx_power has been received with correct value on controller, step %i" % i)
+            self.check_log(self.gateway, "controller", "tx_power=%d" % int(payload_transmit_power,16))
 
     def test_ap_capability_query(self):
         self.gateway_ucc.dev_send_1905(self.mac_repeater1, 0x8001)
