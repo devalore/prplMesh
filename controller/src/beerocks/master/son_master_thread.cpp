@@ -37,6 +37,7 @@
 #include <tlvf/ieee_1905_1/eMessageType.h>
 #include <tlvf/ieee_1905_1/eTlvType.h>
 #include <tlvf/ieee_1905_1/s802_11SpecificInformation.h>
+#include <tlvf/ieee_1905_1/tlv1905NeighborDevice.h>
 #include <tlvf/ieee_1905_1/tlvAlMacAddressType.h>
 #include <tlvf/ieee_1905_1/tlvAutoconfigFreqBand.h>
 #include <tlvf/ieee_1905_1/tlvDeviceInformation.h>
@@ -1676,6 +1677,53 @@ bool master_thread::handle_cmdu_1905_topology_response(const std::string &src_ma
             son_actions::handle_dead_node(fronthaul_radio_on_db,
                                           database.get_node_parent(fronthaul_radio_on_db), database,
                                           cmdu_tx, tasks);
+        }
+    }
+
+    // The reported neighbors list might not be correct since the reporting al_mac hasn't received 
+    // a Topology Discovery from its neighbors yet. Therefore, remove a neighbor node only if more
+    // than 65 seconds have passed since we added this node. This promise that the reported al_mac
+    // will get the Topology Discovery messages from its neighbors and add them to the report.
+    auto last_state_change_timestamp = database.get_last_state_change(src_mac);
+    if (last_state_change_timestamp + std::chrono::seconds(65) < std::chrono::steady_clock::now()) {
+        LOG(TRACE) << "Checking if one of " << src_mac << " is no longer connected";
+        std::unordered_set<sMacAddr> reported_neighbor_al_macs;
+        auto tlv1905NeighborDeviceList = cmdu_rx.getClassList<ieee1905_1::tlv1905NeighborDevice>();
+        for (const auto &tlv1905NeighborDevice : tlv1905NeighborDeviceList) {
+            if (!tlv1905NeighborDevice) {
+                LOG(ERROR) << "ieee1905_1::tlv1905NeighborDevice has invalid pointer";
+                return false;
+            }
+
+            const auto neighbor_al_mac_tuple = tlv1905NeighborDevice->mac_al_1905_device(0);
+            if (!std::get<0>(neighbor_al_mac_tuple)) {
+                LOG(ERROR) << "Getting al_mac element has failed";
+            }
+
+            auto &neighbor_al_mac = std::get<1>(neighbor_al_mac_tuple).mac;
+            LOG(DEBUG) << "Inserting reported neighnor " << neighbor_al_mac << " to the list";
+            reported_neighbor_al_macs.insert(neighbor_al_mac);
+        }
+
+        auto neighbor_al_macs_on_db = database.get_1905_1_neighbors(al_mac);
+        LOG(TRACE) << "Comparing reported neighbors to neighbors on the database, neighbors_on_db="
+                   << neighbor_al_macs_on_db.size();
+        for (const auto &neighbor_al_mac_on_db : neighbor_al_macs_on_db) {
+            // If reported al_mac is on the db skip it, otherwise remove the node.
+            LOG(DEBUG) << "Checks if al_mac " << al_mac << " neighbor " << neighbor_al_mac_on_db
+                       << " is reported in this message";
+            if (reported_neighbor_al_macs.find(neighbor_al_mac_on_db) !=
+                reported_neighbor_al_macs.end()) {
+                continue;
+            }
+            LOG(DEBUG) << "known neighbor al_mac  " << neighbor_al_mac_on_db
+                       << " is not reported on 1905 Neighbor Device TLV, removing the al_mac node";
+
+            std::string neighbor_al_mac_on_db_str =
+                network_utils::mac_to_string(neighbor_al_mac_on_db);
+            auto backhhaul_mac = database.get_node_parent(neighbor_al_mac_on_db_str);
+            son_actions::handle_dead_node(backhhaul_mac, database.get_node_parent(backhhaul_mac),
+                                          database, cmdu_tx, tasks);
         }
     }
 
