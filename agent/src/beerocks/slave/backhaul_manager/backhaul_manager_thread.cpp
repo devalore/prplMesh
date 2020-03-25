@@ -595,6 +595,37 @@ void backhaul_manager::after_select(bool timeout)
         discovery_timestamp = now;
         send_1905_topology_discovery_message();
     }
+
+    // Each platform must send Topology Discovery message every 60 seconds to its first circle
+    // 1905.1 neighbors.
+    // Iterate on each of known 1905.1 neighbors and check if we have received in the last
+    // 60 seconds a Topology Discovery message from it. If not, remove this neighbor from our list
+    // and send a Topology Notification message.
+    bool neighbors_list_changed = false;
+    for (auto it = m_1905_neighbor_devices.begin(); it != m_1905_neighbor_devices.end();) {
+        const auto &last_seen = it->second.last_seen;
+        if (last_seen + std::chrono::seconds(DISCOVERY_NOTIFICATION_TIMEOUT_SECONDS) <
+            std::chrono::steady_clock::now()) {
+            const auto &device_al_mac = it->first;
+            LOG(INFO) << "Removed 1905.1 device " << device_al_mac << " from neighbors list";
+            it                     = m_1905_neighbor_devices.erase(it);
+            neighbors_list_changed = true;
+            continue;
+        }
+        it++;
+    }
+
+    if (neighbors_list_changed) {
+        LOG(INFO) << "Sending topology notification on removeing of 1905.1 neighbors";
+        auto cmdu_header =
+            cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE);
+        if (!cmdu_header) {
+            LOG(ERROR) << "cmdu creation of type TOPOLOGY_NOTIFICATION_MESSAGE, has failed";
+            return;
+        }
+        cmdu_header->flags().relay_indicator = true;
+        send_cmdu_to_bus(cmdu_tx, MULTICAST_MAC_ADDR, bridge_info.mac);
+    }
 }
 
 bool backhaul_manager::finalize_slaves_connect_state(bool fConnected,

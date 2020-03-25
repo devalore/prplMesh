@@ -210,6 +210,7 @@ private:
     const int DEAUTH_REASON_PASSPHRASE_MISMACH        = 2;
     const int AUTOCONFIG_DISCOVERY_TIMEOUT_SECONDS    = 1;
     const int MAX_FAILED_AUTOCONFIG_SEARCH_ATTEMPTS   = 20;
+    const int DISCOVERY_NOTIFICATION_TIMEOUT_SECONDS  = 63; // 60 sec (standard) + 3 sec grace
 
     std::chrono::steady_clock::time_point state_time_stamp_timeout;
     int state_attempts;
