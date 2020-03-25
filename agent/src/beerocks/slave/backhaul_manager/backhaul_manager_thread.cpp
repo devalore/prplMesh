@@ -27,6 +27,7 @@
  */
 #include <tlvf/ieee_1905_1/eMessageType.h>
 #include <tlvf/ieee_1905_1/s802_11SpecificInformation.h>
+#include <tlvf/ieee_1905_1/tlv1905NeighborDevice.h>
 #include <tlvf/ieee_1905_1/tlvAlMacAddressType.h>
 #include <tlvf/ieee_1905_1/tlvAutoconfigFreqBand.h>
 #include <tlvf/ieee_1905_1/tlvDeviceInformation.h>
@@ -2365,6 +2366,33 @@ bool backhaul_manager::handle_1905_topology_query(ieee1905_1::CmduMessageRx &cmd
                        << " backhaul has failed!";
             return true;
         }
+    }
+
+    for (const auto &neighbor_device : m_1905_neighbor_devices) {
+        auto tlv1905NeighborDevice = cmdu_tx.addClass<ieee1905_1::tlv1905NeighborDevice>();
+        if (!tlv1905NeighborDevice) {
+            LOG(ERROR) << "addClass ieee1905_1::tlv1905NeighborDevice failed, mid=" << std::hex
+                       << (int)mid;
+            return false;
+        }
+
+        const auto &neighbor_al_mac = neighbor_device.first;
+
+        tlv1905NeighborDevice->mac_local_iface() = neighbor_device.second.local_iface_mac;
+        if (!tlv1905NeighborDevice->alloc_mac_al_1905_device()) {
+            LOG(ERROR) << "alloc_mac_al_1905_device() has failed";
+            return true;
+        }
+
+        auto mac_al_1905_device_tuple = tlv1905NeighborDevice->mac_al_1905_device(0);
+        if (!std::get<0>(mac_al_1905_device_tuple)) {
+            LOG(ERROR) << "getting mac_al_1905_device element has failed";
+            return true;
+        }
+        auto &mac_al_1905_device = std::get<1>(mac_al_1905_device_tuple);
+        mac_al_1905_device.mac   = neighbor_al_mac;
+        mac_al_1905_device.bridges_exist =
+            ieee1905_1::tlv1905NeighborDevice::eBridgesExist(neighbor_device.second.bridge_exist);
     }
 
     auto tlvSupportedService = cmdu_tx.addClass<wfa_map::tlvSupportedService>();
