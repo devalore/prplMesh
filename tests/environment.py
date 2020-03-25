@@ -5,9 +5,77 @@
 # See LICENSE file for more details.
 ###############################################################
 
+import os
+import re
 import subprocess
 
+from capi import UCCSocket
 from opts import debug, err, opts, status
+
+
+class AlEntity:
+    '''Abstract representation of a MultiAP device (1905.1 AL Entity).
+
+    Derived classes provide concrete implementations for a specific device (e.g. docker).
+
+    This provides basic information about the entity, e.g. its AL MAC address. How this information
+    is retrieved is implementation-specific.
+
+    It also provides an abstract interface to interact with the entity, e.g. for sending CAPI
+    commands.
+
+    If a device runs both the agent and the controller, two AlEntities should be created for it,
+    with the same MAC address. This is not how it is modeled in 1905.1, but it corresponds to how
+    it is implemented in prplMesh and it allows us to have e.g. a separate UCCSocket to controller
+    and agent.
+    '''
+    def __init__(self, mac: str, ucc_socket: UCCSocket, is_controller: bool = False):
+        self.mac = mac
+        self.ucc_socket = ucc_socket
+        self.is_controller = is_controller
+
+        # Convenience functions that propagate to ucc_socket
+        self.cmd_reply = self.ucc_socket.cmd_reply
+        self.dev_get_parameter = self.ucc_socket.dev_get_parameter
+        self.dev_send_1905 = self.ucc_socket.dev_send_1905
+
+    def command(self, *command: str) -> bytes:
+        '''Run `command` on the device and return its output as bytes.'''
+        raise NotImplementedError("command is not implemented in abstract class AlEntity")
+
+
+class AlEntityDocker(AlEntity):
+    '''Docker implementation of AlEntity.
+
+    The entity is defined from the name of the container, the rest is derived from that.
+    '''
+    def __init__(self, name: str, is_controller: bool = False):
+        self.name = name
+        self.rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        self.installdir = os.path.join(self.rootdir, 'build', 'install')
+        self.bridge_name = 'br-lan'
+
+        # First, get the UCC port from the config file
+        if is_controller:
+            config_file_name = 'beerocks_controller.conf'
+        else:
+            config_file_name = 'beerocks_agent.conf'
+        with open(os.path.join(self.installdir, 'config', config_file_name)) as config_file:
+            ucc_port = \
+                re.search(r'ucc_listener_port=(?P<port>[0-9]+)', config_file.read()).group('port')
+
+        device_ip_output = self.command('ip', '-f', 'inet', 'addr', 'show', self.bridge_name)
+        device_ip = re.search(r'inet (?P<ip>[0-9.]+)', device_ip_output.decode('utf-8')).group('ip')
+
+        ucc_socket = UCCSocket(device_ip, ucc_port)
+        mac = ucc_socket.dev_get_parameter('ALid')
+
+        super().__init__(mac, ucc_socket, is_controller)
+
+    def command(self, *command: str) -> bytes:
+        '''Execute `command` in docker container and return its output.'''
+        return subprocess.check_output(("docker", "exec", self.name) + command)
+
 
 class TestEnvironment:
     '''Specification of the test environment.
