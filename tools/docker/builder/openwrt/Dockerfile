@@ -81,7 +81,17 @@ RUN echo "src-git prpl ${PRPL_FEED}" >> feeds.conf.default \
     && echo "CONFIG_TARGET_${TARGET_SYSTEM}_${SUBTARGET}=y" >> .config \
     && echo "CONFIG_TARGET_${TARGET_SYSTEM}_${SUBTARGET}_${TARGET_PROFILE}=y" >> .config \
     && echo "CONFIG_PACKAGE_prplmesh${PRPLMESH_VARIANT}=y" >> .config \
-    && make defconfig \
+    && if [ -n "$INTEL_FEED" ] ; then \
+        echo "CONFIG_PACKAGE_kmod-ppa-drv=y" >> .config \
+        && echo "CONFIG_PACKAGE_kmod-ppa-drv-accel=y" >> .config \
+        && echo "CONFIG_PACKAGE_kmod-ppa-drv-grx500=y" >> .config \
+        && echo "CONFIG_PACKAGE_ppacmd=y" >> .config \
+        && echo "CONFIG_PACKAGE_kmod-ppa-drv-stack-al=y" >> .config \
+        && echo "CONFIG_PACKAGE_kmod-veth=y" >> .config \
+        && echo "CONFIG_PACKAGE_ltq-wlan-wave_6x-uci=y" >> .config \
+        && echo "CONFIG_PACKAGE_iwlwav-base-files=y" >> .config ;\
+    fi ;\
+    make defconfig \
     && cat .config \
     && make -j$(nproc) V=sc \
     && make package/feeds/prpl/prplmesh/clean
