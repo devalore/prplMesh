@@ -340,6 +340,7 @@ bool backhaul_manager::init()
     }
 
     if (!bus_subscribe(std::vector<ieee1905_1::eMessageType>{
+            ieee1905_1::eMessageType::TOPOLOGY_DISCOVERY_MESSAGE,
             ieee1905_1::eMessageType::VENDOR_SPECIFIC_MESSAGE,
             ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_RESPONSE_MESSAGE,
             ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_RENEW_MESSAGE,
@@ -2037,6 +2038,8 @@ bool backhaul_manager::handle_1905_1_message(ieee1905_1::CmduMessageRx &cmdu_rx,
      * false if the message needs to be forwarded by the calling function
      */
     switch (cmdu_rx.getMessageType()) {
+    case ieee1905_1::eMessageType::TOPOLOGY_DISCOVERY_MESSAGE:
+        return handle_1905_topology_discovery(src_mac, cmdu_rx);
     case ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_RESPONSE_MESSAGE: {
         return handle_1905_autoconfiguration_response(cmdu_rx, src_mac);
     }
@@ -2664,6 +2667,54 @@ bool backhaul_manager::handle_1905_combined_infrastructure_metrics(
     }
     LOG(DEBUG) << "sending ACK message to the originator, mid=" << std::hex << int(mid);
     return send_cmdu_to_bus(cmdu_tx, src_mac, bridge_info.mac);
+}
+
+bool backhaul_manager::handle_1905_topology_discovery(const std::string &src_mac,
+                                                      ieee1905_1::CmduMessageRx &cmdu_rx)
+{
+    auto tlvAlMac = cmdu_rx.getClass<ieee1905_1::tlvAlMacAddressType>();
+    if (!tlvAlMac) {
+        LOG(ERROR) << "addClass tlvAlMacAddressType failed";
+        return false;
+    }
+
+    // Filter out the messages we have sent.
+    if (tlvAlMac->mac() == network_utils::mac_from_string(bridge_info.mac)) {
+        return true;
+    }
+
+    auto mid = cmdu_rx.getMessageId();
+    LOG(INFO) << "Received TOPOLOGY_DISCOVERY_MESSAGE from AL MAC=" << tlvAlMac->mac()
+              << ", mid=" << std::hex << int(mid);
+
+    auto new_device = m_1905_neighbor_devices.find(tlvAlMac->mac()) == m_1905_neighbor_devices.end()
+                          ? true
+                          : false;
+
+    // Add/Update the device on our list.
+    m_1905_neighbor_devices[tlvAlMac->mac()].last_seen = std::chrono::steady_clock::now();
+
+    auto tlvMac = cmdu_rx.getClass<ieee1905_1::tlvMacAddress>();
+    if (!tlvMac) {
+        LOG(ERROR) << "Failed to getClass tlvMacAddress";
+        return false;
+    }
+    m_1905_neighbor_devices[tlvAlMac->mac()].local_iface_mac = tlvMac->mac();
+
+    // If it is a new device, then our 1905.1 neighbors list has changed and we are required to send
+    // Topology Notification Message.
+    if (new_device) {
+        LOG(INFO) << "Sending Topology Notification on newly discovered 1905.1 device";
+        auto cmdu_header =
+            cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE);
+        if (!cmdu_header) {
+            LOG(ERROR) << "cmdu creation of type TOPOLOGY_NOTIFICATION_MESSAGE, has failed";
+            return false;
+        }
+        cmdu_header->flags().relay_indicator = true;
+        send_cmdu_to_bus(cmdu_tx, MULTICAST_MAC_ADDR, bridge_info.mac);
+    }
+    return true;
 }
 
 bool backhaul_manager::handle_1905_autoconfiguration_response(ieee1905_1::CmduMessageRx &cmdu_rx,
