@@ -33,6 +33,7 @@ class AlEntity:
         self.mac = mac
         self.ucc_socket = ucc_socket
         self.is_controller = is_controller
+        self.radios = []
 
         # Convenience functions that propagate to ucc_socket
         self.cmd_reply = self.ucc_socket.cmd_reply
@@ -42,6 +43,18 @@ class AlEntity:
     def command(self, *command: str) -> bytes:
         '''Run `command` on the device and return its output as bytes.'''
         raise NotImplementedError("command is not implemented in abstract class AlEntity")
+
+
+class Radio:
+    '''Abstract representation of a radio on a MultiAP agent.
+
+    This provides basic information about the radio, e.g. its mac address, and functionality for
+    checking its status.
+    '''
+    def __init__(self, agent: AlEntity, mac: str):
+        self.agent = agent
+        agent.radios.append(self)
+        self.mac = mac
 
 
 class AlEntityDocker(AlEntity):
@@ -72,9 +85,22 @@ class AlEntityDocker(AlEntity):
 
         super().__init__(mac, ucc_socket, is_controller)
 
+        # We always have two radios, wlan0 and wlan2
+        RadioDocker(self, "wlan0")
+        RadioDocker(self, "wlan2")
+
     def command(self, *command: str) -> bytes:
         '''Execute `command` in docker container and return its output.'''
         return subprocess.check_output(("docker", "exec", self.name) + command)
+
+
+class RadioDocker(Radio):
+    '''Docker implementation of a radio.'''
+    def __init__(self, agent: AlEntityDocker, iface_name: str):
+        self.iface_name = iface_name
+        ip_output = agent.command("ip", "-o",  "link", "list", "dev", "wlan0")
+        mac = re.search(rb"link/ether (([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})", ip_output).group(1).decode()
+        super().__init__(agent, mac)
 
 
 class TestEnvironment:
