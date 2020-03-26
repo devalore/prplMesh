@@ -1152,8 +1152,15 @@ bool backhaul_manager::send_autoconfig_search_message(std::shared_ptr<SSlaveSock
                    << ", iface=" << soc->hostap_iface;
         return false;
     }
-    auto p_cmdu_header =
+    auto cmdu_header =
         cmdu_tx.create(0, ieee1905_1::eMessageType::AP_AUTOCONFIGURATION_SEARCH_MESSAGE);
+
+    if (!cmdu_header) {
+        LOG(ERROR) << "Failed to create cmdu of type AP_AUTOCONFIGURATION_SEARCH_MESSAGE";
+        return false;
+    }
+
+    cmdu_header->flags().relay_indicator = true;
 
     auto tlvAlMacAddressType = cmdu_tx.addClass<ieee1905_1::tlvAlMacAddressType>();
     if (!tlvAlMacAddressType) {
