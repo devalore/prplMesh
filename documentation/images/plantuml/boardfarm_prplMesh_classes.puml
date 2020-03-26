@@ -90,6 +90,7 @@ class rax40 {
 	IPv4Address lan_gateway
 	IPv4Network wan_network
 	IPv4Address wan_gateway
+    prplMesh_agent [..]
 
 	kill_console_at_exit()
 	check_logs()
@@ -121,7 +122,43 @@ class fronthaul_sniffer {
     get_bandwith()
 }
 
+class prplMesh_agent {
+    int port
+    IPv4Address ip
+    prplMesh_repeater[..]
+
+    __init__()
+    send_capi()
+    get_alid()
+    get_repeater()
+    get_status()
+    check_log()
+}
+
+class prplMesh_repeater {
+    string radio_mac
+    int status
+
+    get_mac()
+    get_status()
+}
+
+class prprlMesh_controller {
+    int port
+    IPv4Address ip
+
+    
+    __init__()
+    send_capi()
+    get_alid()
+    get_repeater()
+    get_status()
+    check_log()
+}
+
 OpenWrtRouter <|-- rax40
+prplMesh_agent *-- rax40
+prplMesh_repeater *-- prplMesh_agent
 LinuxDevice <|-- OpenWrtRouter
 LinuxDevice <|-- backhaul_sniffer
 LinuxDevice <|-- fronthaul_sniffer
