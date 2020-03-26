@@ -1926,10 +1926,13 @@ bool slave_thread::handle_cmdu_ap_manager_message(Socket *sd,
         }
 
         // build 1905.1 message CMDU to send to the controller
-        if (!cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE)) {
+        auto cmdu_header =
+            cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE);
+        if (!cmdu_header) {
             LOG(ERROR) << "cmdu creation of type TOPOLOGY_NOTIFICATION_MESSAGE, has failed";
             return false;
         }
+        cmdu_header->flags().relay_indicator = true;
 
         auto client_association_event_tlv = cmdu_tx.addClass<wfa_map::tlvClientAssociationEvent>();
         if (!client_association_event_tlv) {
@@ -1961,7 +1964,8 @@ bool slave_thread::handle_cmdu_ap_manager_message(Socket *sd,
             vs_tlv->disconnect_type()   = notification_in->params().type;
         }
 
-        send_cmdu_to_controller(cmdu_tx);
+        // Send CMDU on multicast address
+        send_cmdu_to_controller(cmdu_tx, true);
 
         break;
     }
@@ -2112,10 +2116,13 @@ bool slave_thread::handle_cmdu_ap_manager_message(Socket *sd,
         }
 
         // build 1905.1 message CMDU to send to the controller
-        if (!cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE)) {
+        auto cmdu_header =
+            cmdu_tx.create(0, ieee1905_1::eMessageType::TOPOLOGY_NOTIFICATION_MESSAGE);
+        if (!cmdu_header) {
             LOG(ERROR) << "cmdu creation of type TOPOLOGY_NOTIFICATION_MESSAGE, has failed";
             return false;
         }
+        cmdu_header->flags().relay_indicator = true;
 
         auto client_association_event_tlv = cmdu_tx.addClass<wfa_map::tlvClientAssociationEvent>();
         if (!client_association_event_tlv) {
@@ -2145,7 +2152,8 @@ bool slave_thread::handle_cmdu_ap_manager_message(Socket *sd,
             vs_tlv->capabilities() = notification_in->params().capabilities;
         }
 
-        send_cmdu_to_controller(cmdu_tx);
+        // Send CMDU on multicast address
+        send_cmdu_to_controller(cmdu_tx, true);
 
         break;
     }
