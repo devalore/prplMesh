@@ -95,6 +95,34 @@ class rax40 {
 	check_logs()
 	check_status()
 }
-OpenWrtRouter <|-- LinuxDevice
-rax40 <|-- OpenWrtRouter
+
+class backhaul_sniffer {
+    string model
+    int listening_ports
+    string listening_proto
+    string iface
+    
+    __init__()
+    catch_message()
+    set_ports()
+    set_proto()
+}
+
+class fronthaul_sniffer {
+    string model
+
+    __init__()
+    start_monitor()
+    stop_monitor()
+    catch_message()
+    set_ssid()
+    set_bsid()
+    get_channel()
+    get_bandwith()
+}
+
+ OpenWrtRouter <|-- rax40
+ LinuxDevice <|-- OpenWrtRouter
+ LinuxDevice <|-- backhaul_sniffer
+ LinuxDevice <|-- fronthaul_sniffer
 @enduml
