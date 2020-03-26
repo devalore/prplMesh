@@ -121,8 +121,9 @@ class fronthaul_sniffer {
     get_bandwith()
 }
 
- OpenWrtRouter <|-- rax40
- LinuxDevice <|-- OpenWrtRouter
- LinuxDevice <|-- backhaul_sniffer
- LinuxDevice <|-- fronthaul_sniffer
+OpenWrtRouter <|-- rax40
+LinuxDevice <|-- OpenWrtRouter
+LinuxDevice <|-- backhaul_sniffer
+LinuxDevice <|-- fronthaul_sniffer
+
 @enduml
