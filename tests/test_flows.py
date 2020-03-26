@@ -413,10 +413,12 @@ class test_flows:
         self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
 
         # Send channel selection request with chnging tx_power_limit 
-        # Payload for transmit power - 20 for both radio
-        payload_transmit_power ="0x14"
+        # Payload for transmit power (tp)
+        tp20dBm = "0x14"
+        tp21dBm = "0x15"
 
-        for i in range(1, 3):
+        for payload_transmit_power in (tp20dBm,tp21dBm):
+            transmit_power = int(payload_transmit_power,16)
             self.debug("Send empty channel selection request with changing tx_power_limit")
             self.gateway_ucc.dev_send_1905(
                 self.mac_repeater1,
@@ -425,15 +427,10 @@ class test_flows:
                 tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_transmit_power}')
             )
 
-            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
-            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
-            self.check_log(self.gateway, "controller", "tx_power=%d" % int(payload_transmit_power,16))
+            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % transmit_power)
+            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % transmit_power)
+            self.check_log(self.gateway, "controller", "tx_power=%d" % transmit_power)
             self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
-            # Increase payload for transmit power - 21 for both radio
-            payload_transmit_power ="0x15"
-
-        # Payload for transmit power - 20 for both radio
-        payload_transmit_power ="0x14"
 
         # Send channel selection request with payload
         # payload_wlan0 - request for change channel on 6
@@ -452,14 +449,15 @@ class test_flows:
                 switch channel
         """
         for i in range(1, 3):
+            transmit_power = int(tp20dBm,16)
             self.debug("Send channel selection request, step %i" % i)
             self.gateway_ucc.dev_send_1905(
                 self.mac_repeater1,
                 0x8006,
                 tlv(0x8B,0x005F, f'{self.mac_repeater1_wlan0} {payload_wlan0}'),
-                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {payload_transmit_power}'),
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan0} {tp20dBm}'),
                 tlv(0x8B,0x004C, f'{self.mac_repeater1_wlan2} {payload_wlan2}'),
-                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {payload_transmit_power}')
+                tlv(0x8D,0x0007, f'{self.mac_repeater1_wlan2} {tp20dBm}')
             )
             time.sleep(1)
 
@@ -469,9 +467,9 @@ class test_flows:
             self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_SELECTION_REQUEST_MESSAGE")
 
             self.debug("Confirming tlvTransmitPowerLimit has been received with correct value on agent, step %i" % i)
-            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
+            self.check_log(self.repeater1, "agent_wlan0", "tlvTransmitPowerLimit %d" % transmit_power)
             self.check_log(self.repeater1, "agent_wlan0", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
-            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % int(payload_transmit_power,16))
+            self.check_log(self.repeater1, "agent_wlan2", "tlvTransmitPowerLimit %d" % transmit_power)
             self.check_log(self.repeater1, "agent_wlan2", "ACTION_APMANAGER_HOSTAP_CHANNEL_SWITCH_ACS_START")
 
             self.debug("Confirming ACK_MESSAGE has been received on agent, step %i" % i)
@@ -482,7 +480,7 @@ class test_flows:
             self.check_log(self.gateway, "controller", "OPERATING_CHANNEL_REPORT_MESSAGE")
 
             self.debug("Confirming tx_power has been received with correct value on controller, step %i" % i)
-            self.check_log(self.gateway, "controller", "tx_power=%d" % int(payload_transmit_power,16))
+            self.check_log(self.gateway, "controller", "tx_power=%d" % transmit_power)
 
     def test_ap_capability_query(self):
         self.gateway_ucc.dev_send_1905(self.mac_repeater1, 0x8001)
