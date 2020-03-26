@@ -1,4 +1,41 @@
 @startuml
+class LinuxDevice {
+	string tftp_dir
+
+	check_status()
+	get_interface_ipaddr()
+	get_interface_ip6addr()
+	get_interface_macaddr()
+	get_seconds_uptime()
+	enable_ipv6()
+	set_static_ip()
+	disable_ipv6()
+	release_dhcp()
+	check_access_url()
+	set_printk()
+	prefer_ipv4()
+	ping()
+	traceroute()
+	is_link_up()
+	set_link_state()
+	add_new_user()
+	copy_file_to_server()
+	 gzip_str()
+	ip_neigh_flush()
+	sudo_sendline()
+	set_cli_size()
+	wait_for_linux()
+	get_dns_server_upstream()
+	get_nf_conntrack_conn_count()
+	get_proc_vmstat()
+	wait_for_network()
+	get_memfree()
+	start_tinyproxy()
+	take_lock()
+	release_lock()
+	perform_curl()
+}
+
 class OpenWrtRouter {
 	string promt
 	string uprompt
@@ -58,5 +95,6 @@ class rax40 {
 	check_logs()
 	check_status()
 }
- rax40 <|-- OpenWrtRouter
+OpenWrtRouter <|-- LinuxDevice
+rax40 <|-- OpenWrtRouter
 @enduml
