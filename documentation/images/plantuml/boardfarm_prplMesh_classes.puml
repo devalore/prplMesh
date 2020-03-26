@@ -1,0 +1,62 @@
+@startuml
+class OpenWrtRouter {
+	string promt
+	string uprompt
+	string uboot_eth
+	bool linux_booted
+	bool saveenv_safe
+	string lan_gmac_iface
+	string lan_iface
+	string wan_iface
+	bool tftp_server_int
+	bool flash_meta_booted
+	bool has_cmts
+	string cdrouter_config
+	uint uboot_net_delay
+	bool routing
+	IPv4Network lan_network
+	IPv4Address lan_gateway
+	string tmpdir
+
+	__init__()
+	get_file()
+	tftp_get_file()
+	tftp_get_file_uboot()
+	prepare_file()
+	install_package()
+	wait_for_boot()
+	network_restart()
+	firewall_restart()
+	get_wan_iface()
+	get_wan_proto()
+	setup_uboot_network()
+	config_wan_proto()
+	enable_mgmt_gui()
+	enable_ssh()
+	uci_allow_wan_http()
+	uci_allow_wan_ssh()
+	uci_allow_wan_https()
+	uci_forward_traffic_redirect()
+	uci_forward_traffic_rule()
+	wait_for_mounts()
+	get_dns_server()
+	get_user_id()
+	collect_stats()
+	parse_stats()
+}
+
+class rax40 {
+	string model
+	string wan_iface
+	string lan_iface
+	IPv4Network lan_network
+	IPv4Address lan_gateway
+	IPv4Network wan_network
+	IPv4Address wan_gateway
+
+	kill_console_at_exit()
+	check_logs()
+	check_status()
+}
+ rax40 <|-- OpenWrtRouter
+@enduml
