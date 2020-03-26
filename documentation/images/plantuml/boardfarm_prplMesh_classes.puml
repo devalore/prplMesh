@@ -1,100 +1,100 @@
 @startuml
 class LinuxDevice {
-	string tftp_dir
+    string tftp_dir
 
-	check_status()
-	get_interface_ipaddr()
-	get_interface_ip6addr()
-	get_interface_macaddr()
-	get_seconds_uptime()
-	enable_ipv6()
-	set_static_ip()
-	disable_ipv6()
-	release_dhcp()
-	check_access_url()
-	set_printk()
-	prefer_ipv4()
-	ping()
-	traceroute()
-	is_link_up()
-	set_link_state()
-	add_new_user()
-	copy_file_to_server()
-	 gzip_str()
-	ip_neigh_flush()
-	sudo_sendline()
-	set_cli_size()
-	wait_for_linux()
-	get_dns_server_upstream()
-	get_nf_conntrack_conn_count()
-	get_proc_vmstat()
-	wait_for_network()
-	get_memfree()
-	start_tinyproxy()
-	take_lock()
-	release_lock()
-	perform_curl()
+    check_status()
+    get_interface_ipaddr()
+    get_interface_ip6addr()
+    get_interface_macaddr()
+    get_seconds_uptime()
+    enable_ipv6()
+    set_static_ip()
+    disable_ipv6()
+    release_dhcp()
+    check_access_url()
+    set_printk()
+    prefer_ipv4()
+    ping()
+    traceroute()
+    is_link_up()
+    set_link_state()
+    add_new_user()
+    copy_file_to_server()
+    gzip_str()
+    ip_neigh_flush()
+    sudo_sendline()
+    set_cli_size()
+    wait_for_linux()
+    get_dns_server_upstream()
+    get_nf_conntrack_conn_count()
+    get_proc_vmstat()
+    wait_for_network()
+    get_memfree()
+    start_tinyproxy()
+    take_lock()
+    release_lock()
+    perform_curl()
 }
 
 class OpenWrtRouter {
-	string promt
-	string uprompt
-	string uboot_eth
-	bool linux_booted
-	bool saveenv_safe
-	string lan_gmac_iface
-	string lan_iface
-	string wan_iface
-	bool tftp_server_int
-	bool flash_meta_booted
-	bool has_cmts
-	string cdrouter_config
-	uint uboot_net_delay
-	bool routing
-	IPv4Network lan_network
-	IPv4Address lan_gateway
-	string tmpdir
+    string promt
+    string uprompt
+    string uboot_eth
+    bool linux_booted
+    bool saveenv_safe
+    string lan_gmac_iface
+    string lan_iface
+    string wan_iface
+    bool tftp_server_int
+    bool flash_meta_booted
+    bool has_cmts
+    string cdrouter_config
+    uint uboot_net_delay
+    bool routing
+    IPv4Network lan_network
+    IPv4Address lan_gateway
+    string tmpdir
 
-	__init__()
-	get_file()
-	tftp_get_file()
-	tftp_get_file_uboot()
-	prepare_file()
-	install_package()
-	wait_for_boot()
-	network_restart()
-	firewall_restart()
-	get_wan_iface()
-	get_wan_proto()
-	setup_uboot_network()
-	config_wan_proto()
-	enable_mgmt_gui()
-	enable_ssh()
-	uci_allow_wan_http()
-	uci_allow_wan_ssh()
-	uci_allow_wan_https()
-	uci_forward_traffic_redirect()
-	uci_forward_traffic_rule()
-	wait_for_mounts()
-	get_dns_server()
-	get_user_id()
-	collect_stats()
-	parse_stats()
+    __init__()
+    get_file()
+    tftp_get_file()
+    tftp_get_file_uboot()
+    prepare_file()
+    install_package()
+    wait_for_boot()
+    network_restart()
+    firewall_restart()
+    get_wan_iface()
+    get_wan_proto()
+    setup_uboot_network()
+    config_wan_proto()
+    enable_mgmt_gui()
+    enable_ssh()
+    uci_allow_wan_http()
+    uci_allow_wan_ssh()
+    uci_allow_wan_https()
+    uci_forward_traffic_redirect()
+    uci_forward_traffic_rule()
+    wait_for_mounts()
+    get_dns_server()
+    get_user_id()
+    collect_stats()
+    parse_stats()
 }
 
 class rax40 {
-	string model
-	string wan_iface
-	string lan_iface
-	IPv4Network lan_network
-	IPv4Address lan_gateway
-	IPv4Network wan_network
-	IPv4Address wan_gateway
+    string model
+    string wan_iface
+    string lan_iface
+    IPv4Network lan_network
+    IPv4Address lan_gateway
+    IPv4Network wan_network
+    IPv4Address wan_gateway
     prplMesh_agent [..]
 
-	kill_console_at_exit()
-	check_logs()
-	check_status()
+    kill_console_at_exit()
+    check_logs()
+    check_status()
 }
 
 class backhaul_sniffer {
@@ -102,7 +102,7 @@ class backhaul_sniffer {
     int listening_ports
     string listening_proto
     string iface
-    
+
     __init__()
     catch_message()
     set_ports()
@@ -147,7 +147,6 @@ class prprlMesh_controller {
     int port
     IPv4Address ip
 
-    
     __init__()
     send_capi()
     get_alid()
