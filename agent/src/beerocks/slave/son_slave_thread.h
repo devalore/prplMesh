@@ -151,7 +151,7 @@ private:
     void platform_notify_error(beerocks::bpl::eErrorCode code, const std::string &error_data);
     bool monitor_heartbeat_check();
     bool ap_manager_heartbeat_check();
-    bool send_cmdu_to_controller(ieee1905_1::CmduMessageTx &cmdu_tx);
+    bool send_cmdu_to_controller(ieee1905_1::CmduMessageTx &cmdu_tx, bool multicast = false);
 
 private:
     const int SELECT_TIMEOUT_MSEC                                     = 200;

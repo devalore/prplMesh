@@ -3728,7 +3728,7 @@ bool slave_thread::ap_manager_heartbeat_check()
     return true;
 }
 
-bool slave_thread::send_cmdu_to_controller(ieee1905_1::CmduMessageTx &cmdu_tx)
+bool slave_thread::send_cmdu_to_controller(ieee1905_1::CmduMessageTx &cmdu_tx, bool multicast)
 {
     if (!master_socket) {
         LOG(ERROR) << "socket to master is nullptr";
@@ -3748,8 +3748,10 @@ bool slave_thread::send_cmdu_to_controller(ieee1905_1::CmduMessageTx &cmdu_tx)
         beerocks_header->actionhdr()->radio_mac() = hostap_params.iface_mac;
         beerocks_header->actionhdr()->direction() = beerocks::BEEROCKS_DIRECTION_CONTROLLER;
     }
-    return message_com::send_cmdu(master_socket, cmdu_tx, backhaul_params.controller_bridge_mac,
-                                  backhaul_params.bridge_mac);
+
+    static const std::string MULTICAST_MAC_ADDR = "01:80:c2:00:00:13";
+    auto dst_addr = multicast ? MULTICAST_MAC_ADDR : backhaul_params.controller_bridge_mac;
+    return message_com::send_cmdu(master_socket, cmdu_tx, dst_addr, backhaul_params.bridge_mac);
 }
 
 /**
