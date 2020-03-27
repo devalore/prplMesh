@@ -111,7 +111,7 @@ main() {
             TARGET_PROFILE=DEVICE_NETGEAR_RAX40
             PRPLMESH_VARIANT="-dwpal"
             PRPL_FEED="https://git.prpl.dev/prplmesh/iwlwav.git^acc744ea7c3f678a9f5f7f6b6904c167afceb5b7"
-            INTEL_FEED="https://git.prpl.dev/prplmesh/feed-intel.git^e3eca4e93286eb4346f0196b2816a3be97287482"
+            INTEL_FEED="https://git.prpl.dev/prplmesh/feed-intel.git^6323abee35f2d8cd6263656e9226176cf1bcfca7"
             BASE_CONFIG=gcc8
             ;;
         *)
