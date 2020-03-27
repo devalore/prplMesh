@@ -13,7 +13,6 @@ import subprocess
 import sys
 import time
 from typing import Dict
-import json
 
 from capi import tlv, UCCSocket
 import environment as env
@@ -115,52 +114,7 @@ class TestFlows:
         self.repeater1 = 'repeater1-' + unique_id
         self.repeater2 = 'repeater2-' + unique_id
 
-        docker_network = 'prplMesh-net-{}'.format(unique_id)
-        docker_network_inspect_cmd = ('docker', 'network', 'inspect', docker_network)
-        inspect_result = subprocess.run(docker_network_inspect_cmd, stdout=subprocess.PIPE)
-        if inspect_result.returncode != 0:
-            # Assume network doesn't exist yet. Create it.
-            # This is normally done by test_gw_repeater.sh, but we need it earlier to be able to
-            # start tcpdump
-            # Raise an exception if it fails.
-            subprocess.run(('docker', 'network', 'create', docker_network), check=True,
-                           stdout=subprocess.DEVNULL)
-            # Inspect again, now raise if it fails.
-            inspect_result = subprocess.run(docker_network_inspect_cmd, check=True,
-                                            stdout=subprocess.PIPE)
-
-        inspect = json.loads(inspect_result.stdout)
-        prplmesh_net = inspect[0]
-        # podman adds a 'plugins' indirection that docker doesn't have.
-        if 'plugins' in prplmesh_net:
-            bridge = prplmesh_net['plugins'][0]['bridge']
-        else:
-            # docker doesn't report the interface name of the bridge. So format it based on the
-            # ID.
-            bridge_id = prplmesh_net['Id']
-            bridge = 'br-' + bridge_id[:12]
-
-        env.environment = env.TestEnvironment(bridge)
-
-        if not skip_init:
-            env.environment.tcpdump_start('init')
-            try:
-                subprocess.check_call((os.path.join(self.rootdir, "tests", "test_gw_repeater.sh"),
-                                       "-f", "-u", unique_id, "-g", self.gateway,
-                                       "-r", self.repeater1, "-r", self.repeater2, "-d", "7"))
-            finally:
-                env.environment.tcpdump_kill()
-
-        self.controller = env.AlEntityDocker(self.gateway, True)
-        self.agents = (env.AlEntityDocker(self.repeater1), env.AlEntityDocker(self.repeater2))
-
-        debug('controller: {}'.format(self.controller.mac))
-        debug('agent1: {}'.format(self.agents[0].mac))
-        debug('agent1 wlan0: {}'.format(self.agents[0].radios[0].mac))
-        debug('agent1 wlan2: {}'.format(self.agents[0].radios[1].mac))
-        debug('agent2: {}'.format(self.agents[1].mac))
-        debug('agent2 wlan0: {}'.format(self.agents[1].radios[0].mac))
-        debug('agent2 wlan2: {}'.format(self.agents[1].radios[1].mac))
+        env.launch_environment_docker(unique_id, skip_init)
 
     def _check_log_internal(self, device: str, program: str, regex: str) -> bool:
         '''Search for regex in logfile for program on device.'''
@@ -214,12 +168,12 @@ class TestFlows:
         for test in tests:
             test_full = 'test_' + test
             self.start_test(test)
-            env.environment.tcpdump_start(test_full)
+            env.wired_sniffer.start(test_full)
             self.check_error = 0
             try:
                 getattr(self, test_full)()
             finally:
-                env.environment.tcpdump_kill()
+                env.wired_sniffer.stop()
             if self.check_error != 0:
                 err(test + " failed")
             else:
@@ -240,15 +194,15 @@ class TestFlows:
 
     def test_ap_config_renew(self):
         # Regression test: MAC address should be case insensitive
-        mac_repeater1_upper = self.agents[0].mac.upper()
+        mac_repeater1_upper = env.agents[0].mac.upper()
         # Configure the controller and send renew
-        self.controller.cmd_reply("DEV_RESET_DEFAULT")
-        self.controller.cmd_reply(
+        env.controller.cmd_reply("DEV_RESET_DEFAULT")
+        env.controller.cmd_reply(
             "DEV_SET_CONFIG,"
                 "bss_info1,{mac_repeater1_upper} 8x Multi-AP-24G-1 0x0020 0x0008 maprocks1 0 1,"
-                "bss_info2,{self.agents[0].mac} 8x Multi-AP-24G-2 0x0020 0x0008 maprocks2 1 0".format(**locals()))
-        self.controller.dev_send_1905(self.agents[0].mac, 0x000A,
-            tlv(0x01, 0x0006, "{" + self.controller.mac + "}"),
+                "bss_info2,{env.agents[0].mac} 8x Multi-AP-24G-2 0x0020 0x0008 maprocks2 1 0".format(**locals()))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x000A,
+            tlv(0x01, 0x0006, "{" + env.controller.mac + "}"),
             tlv(0x0F, 0x0001, "{0x00}"),
             tlv(0x10, 0x0001, "{0x00}"))
 
@@ -259,20 +213,20 @@ class TestFlows:
         self.check_log(self.repeater1, "agent_wlan0", r"Received credentials for ssid: Multi-AP-24G-2 .* bss_type: 1")
         self.check_log(self.repeater1, "agent_wlan2", r".* tear down radio")
 
-        bssid1 = self.agents[0].dev_get_parameter('macaddr',
-                                                  ruid = '0x' + self.agents[0].radios[0].mac.replace(':', ''),
+        bssid1 = env.agents[0].dev_get_parameter('macaddr',
+                                                  ruid = '0x' + env.agents[0].radios[0].mac.replace(':', ''),
                                                   ssid = 'Multi-AP-24G-1')
         if not bssid1:
             self.fail("repeater1 didn't configure Multi-AP-24G-1")
 
     def test_ap_config_bss_tear_down(self):
         # Configure the controller and send renew
-        self.controller.cmd_reply("DEV_RESET_DEFAULT")
-        self.controller.cmd_reply(
+        env.controller.cmd_reply("DEV_RESET_DEFAULT")
+        env.controller.cmd_reply(
             "DEV_SET_CONFIG,bss_info1,"
-                "{self.agents[0].mac} 8x Multi-AP-24G-3 0x0020 0x0008 maprocks1 0 1".format(self = self))
-        self.controller.dev_send_1905(self.agents[0].mac, 0x000A,
-            tlv(0x01, 0x0006, "{" + self.controller.mac + "}"),
+                "{env.agents[0].mac} 8x Multi-AP-24G-3 0x0020 0x0008 maprocks1 0 1".format(self = self))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x000A,
+            tlv(0x01, 0x0006, "{" + env.controller.mac + "}"),
             tlv(0x0F, 0x0001, "{0x00}"),
             tlv(0x10, 0x0001, "{0x00}"))
 
@@ -282,48 +236,48 @@ class TestFlows:
         self.check_log(self.repeater1, "agent_wlan0", r"Received credentials for ssid: Multi-AP-24G-3 .* bss_type: 2")
         self.check_log(self.repeater1, "agent_wlan2", r".* tear down radio")
         conn_map = self.get_conn_map()
-        repeater1 = conn_map[self.agents[0].mac]
-        repeater1_wlan0 = repeater1.radios[self.agents[0].radios[0].mac]
+        repeater1 = conn_map[env.agents[0].mac]
+        repeater1_wlan0 = repeater1.radios[env.agents[0].radios[0].mac]
         for vap in repeater1_wlan0.vaps.values():
             if vap.ssid not in (b'Multi-AP-24G-3', b'N/A'):
                 self.fail('Wrong SSID: {vap.ssid} instead of Multi-AP-24G-3'.format(vap = vap))
-        repeater1_wlan2 = repeater1.radios[self.agents[0].radios[1].mac]
+        repeater1_wlan2 = repeater1.radios[env.agents[0].radios[1].mac]
         for vap in repeater1_wlan2.vaps.values():
             if vap.ssid != b'N/A':
                 self.fail('Wrong SSID: {vap.ssid} instead torn down'.format(vap = vap))
 
         # SSIDs have been removed for the CTT Agent1's front radio
-        self.controller.cmd_reply(
-            "DEV_SET_CONFIG,bss_info1,{self.agents[0].mac} 8x".format(self = self))
+        env.controller.cmd_reply(
+            "DEV_SET_CONFIG,bss_info1,{env.agents[0].mac} 8x".format(self = self))
         # Send renew message
-        self.controller.dev_send_1905(self.agents[0].mac, 0x000A,
-            tlv(0x01, 0x0006, "{" + self.controller.mac + "}"),
+        env.controller.dev_send_1905(env.agents[0].mac, 0x000A,
+            tlv(0x01, 0x0006, "{" + env.controller.mac + "}"),
             tlv(0x0F, 0x0001, "{0x00}"),
             tlv(0x10, 0x0001, "{0x00}"))
 
         time.sleep(3)
         self.check_log(self.repeater1, "agent_wlan0", r".* tear down radio")
         conn_map = self.get_conn_map()
-        repeater1 = conn_map[self.agents[0].mac]
-        repeater1_wlan0 = repeater1.radios[self.agents[0].radios[0].mac]
+        repeater1 = conn_map[env.agents[0].mac]
+        repeater1_wlan0 = repeater1.radios[env.agents[0].radios[0].mac]
         for vap in repeater1_wlan0.vaps.values():
             if vap.ssid != b'N/A':
                 self.fail('Wrong SSID: {vap.ssid} instead torn down'.format(vap = vap))
-        repeater1_wlan2 = repeater1.radios[self.agents[0].radios[1].mac]
+        repeater1_wlan2 = repeater1.radios[env.agents[0].radios[1].mac]
         for vap in repeater1_wlan2.vaps.values():
             if vap.ssid != b'N/A':
                 self.fail('Wrong SSID: {vap.ssid} instead torn down'.format(vap = vap))
 
     def test_channel_selection(self):
         debug("Send channel preference query")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8004)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8004)
         time.sleep(1)
         debug("Confirming channel preference query has been received on agent")
         self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_PREFERENCE_QUERY_MESSAGE")
         self.check_log(self.repeater1, "agent_wlan2", "CHANNEL_PREFERENCE_QUERY_MESSAGE")
 
         debug("Send channel selection request")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8006)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8006)
         time.sleep(1)
         debug("Confirming channel selection request has been received on agent")
         self.check_log(self.repeater1, "agent_wlan0", "CHANNEL_SELECTION_REQUEST_MESSAGE")
@@ -336,7 +290,7 @@ class TestFlows:
         # self.check_log(self.repeater1, "agent_wlan2", "ACK_MESSAGE")
 
     def test_ap_capability_query(self):
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8001)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8001)
         time.sleep(1)
 
         debug("Confirming ap capability query has been received on agent")
@@ -346,7 +300,7 @@ class TestFlows:
         self.check_log(self.gateway, "controller", "AP_CAPABILITY_REPORT_MESSAGE")
 
     def test_link_metric_query(self):
-        self.controller.dev_send_1905(self.agents[0].mac, 0x0005,
+        env.controller.dev_send_1905(env.agents[0].mac, 0x0005,
                                        tlv(0x08,0x0002,"0x00 0x02"))
         time.sleep(1)
 
@@ -360,39 +314,39 @@ class TestFlows:
 
     def test_combined_infra_metrics(self):
         debug("Send AP Metrics query message to agent 1")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x800B,
-                                       tlv(0x93,0x0007,"0x01 {%s}" % (self.agents[0].radios[0].mac)))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x800B,
+                                       tlv(0x93,0x0007,"0x01 {%s}" % (env.agents[0].radios[0].mac)))
         self.check_log(self.repeater1, "agent_wlan0", "Received AP_METRICS_QUERY_MESSAGE")
         # TODO agent should send response autonomously, with same MID.
         # tlv1 == AP metrics TLV
         # tlv2 == STA metrics TLV with no metrics
         # tlv3 == STA metrics TLV for STA connected to this BSS
         # tlv4 == STA traffic stats TLV for same STA
-        self.agents[0].dev_send_1905(self.controller.mac, 0x800C,
-            tlv(0x94,0x000d,"{%s} 0x01 0x0002 0x01 0x1f2f3f" % (self.agents[0].radios[0].mac)),
+        env.agents[0].dev_send_1905(env.controller.mac, 0x800C,
+            tlv(0x94,0x000d,"{%s} 0x01 0x0002 0x01 0x1f2f3f" % (env.agents[0].radios[0].mac)),
             tlv(0x96,0x0007,"{55:44:33:22:11:00} 0x00"),
             tlv(0x96,0x001a,"{66:44:33:22:11:00} 0x01 {%s} 0x11223344 0x1a2a3a4a 0x1b2b3b4b 0x55" %
-                self.agents[0].radios[0].mac),
+                env.agents[0].radios[0].mac),
             tlv(0xa2,0x0022,"{55:44:33:22:11:00} 0x10203040 0x11213141 0x12223242 0x13233343 "
                 "0x14243444 0x15253545 0x16263646"))
         self.check_log(self.gateway, "controller", "Received AP_METRICS_RESPONSE_MESSAGE")
 
         debug("Send AP Metrics query message to agent 2")
-        self.controller.dev_send_1905(self.agents[1].mac, 0x800B,
-                                       tlv(0x93,0x0007,"0x01 {%s}" % self.agents[1].radios[1].mac))
+        env.controller.dev_send_1905(env.agents[1].mac, 0x800B,
+                                       tlv(0x93,0x0007,"0x01 {%s}" % env.agents[1].radios[1].mac))
         self.check_log(self.repeater2, "agent_wlan2", "Received AP_METRICS_QUERY_MESSAGE")
         # TODO agent should send response autonomously
         # Same as above but with different STA MAC addresses, different values and skipping the empty one
-        self.agents[1].dev_send_1905(self.controller.mac, 0x800C,
-            tlv(0x94,0x0010,"{%s} 0x11 0x1002 0x90 0x1c2c3c 0x1d2d3d" % self.agents[1].radios[1].mac),
-            tlv(0x96,0x001a,"{77:44:33:22:11:00} 0x01 {%s} 0x19293949 0x10203040 0x11213141 0x99" % self.agents[1].radios[1].mac),
+        env.agents[1].dev_send_1905(env.controller.mac, 0x800C,
+            tlv(0x94,0x0010,"{%s} 0x11 0x1002 0x90 0x1c2c3c 0x1d2d3d" % env.agents[1].radios[1].mac),
+            tlv(0x96,0x001a,"{77:44:33:22:11:00} 0x01 {%s} 0x19293949 0x10203040 0x11213141 0x99" % env.agents[1].radios[1].mac),
             tlv(0xa2,0x0022,"{77:44:33:22:11:00} 0xa0203040 0xa1213141 0xa2223242 0xa3233343 "
                          "0xa4243444 0xa5253545 0xa6263646"))
         self.check_log(self.gateway, "controller", "Received AP_METRICS_RESPONSE_MESSAGE")
 
         debug("Send 1905 Link metric query to agent 1 (neighbor gateway)")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x0005,
-                                      tlv(0x08,0x0008,"0x01 {%s} 0x02" % self.controller.mac))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x0005,
+                                      tlv(0x08,0x0008,"0x01 {%s} 0x02" % env.controller.mac))
         self.check_log(self.repeater1, "agent", "Received LINK_METRIC_QUERY_MESSAGE")
         self.check_log(self.gateway, "controller", "Received LINK_METRIC_RESPONSE_MESSAGE")
         self.check_log(self.gateway, "controller", "Received TLV_TRANSMITTER_LINK_METRIC")
@@ -400,7 +354,7 @@ class TestFlows:
 
         # Trigger combined infra metrics
         debug("Send Combined infrastructure metrics message to agent 1")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8013)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8013)
         self.check_log(self.repeater1, "agent", "Received COMBINED_INFRASTRUCTURE_METRICS")
         self.check_log(self.repeater1, "agent", "Received TLV_TRANSMITTER_LINK_METRIC")
         self.check_log(self.repeater1, "agent", "Received TLV_RECEIVER_LINK_METRIC")
@@ -410,11 +364,11 @@ class TestFlows:
         sta_mac2 = '00:00:00:11:00:33'
 
         debug("Send client capability query for unconnected STA")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8009,
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8009,
                                       tlv(0x90,0x000C,
                                           '{mac_repeater1_wlan0} {sta_mac1}'
                                            .format(sta_mac1 = sta_mac1,
-                                                   mac_repeater1_wlan0 = self.agents[0].radios[0].mac)))
+                                                   mac_repeater1_wlan0 = env.agents[0].radios[0].mac)))
         time.sleep(1)
         debug("Confirming client capability query has been received on agent")
         # check that both radio agents received it, in the future we'll add a check to verify which
@@ -426,18 +380,18 @@ class TestFlows:
         self.check_log(self.gateway, "controller",
                        r"Result Code= FAILURE, client MAC= {sta_mac1}, BSSID= {mac_repeater1_wlan0}"
                         .format(sta_mac1 = sta_mac1,
-                                mac_repeater1_wlan0 = self.agents[0].radios[0].mac))
+                                mac_repeater1_wlan0 = env.agents[0].radios[0].mac))
 
         debug("Connect dummy STA to wlan0")
         self.send_bwl_event(self.repeater1, "wlan0",
                             "EVENT AP-STA-CONNECTED {sta_mac2}".format(sta_mac2 = sta_mac2))
 
         debug("Send client capability query for connected STA")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8009,
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8009,
                                       tlv(0x90,0x000C,
                                           '{mac_repeater1_wlan0} {sta_mac2}'
                                            .format(sta_mac2 = sta_mac2,
-                                                   mac_repeater1_wlan0 = self.agents[0].radios[0].mac)))
+                                                   mac_repeater1_wlan0 = env.agents[0].radios[0].mac)))
         time.sleep(1)
 
         debug("Confirming client capability report message has been received on controller")
@@ -445,7 +399,7 @@ class TestFlows:
         self.check_log(self.gateway, "controller",
                        r"Result Code= SUCCESS, client MAC= {sta_mac2}, BSSID= {mac_repeater1_wlan0}"
                         .format(sta_mac2 = sta_mac2,
-                                mac_repeater1_wlan0 = self.agents[0].radios[0].mac))
+                                mac_repeater1_wlan0 = env.agents[0].radios[0].mac))
 
     def test_client_association_dummy(self):
         sta_mac = "11:11:33:44:55:66"
@@ -453,7 +407,7 @@ class TestFlows:
         debug("Connect dummy STA to wlan0")
         self.send_bwl_event(self.repeater1, "wlan0", "EVENT AP-STA-CONNECTED {}".format(sta_mac))
         debug("Send client association control request to the chosen BSSID to steer the client (UNBLOCK) ")
-        self.beerocks_cli_command('client_allow {} {}'.format(sta_mac, self.agents[0].radios[1].mac))
+        self.beerocks_cli_command('client_allow {} {}'.format(sta_mac, env.agents[0].radios[1].mac))
         time.sleep(1)
 
         debug("Confirming Client Association Control Request message was received (UNBLOCK)")
@@ -461,7 +415,7 @@ class TestFlows:
                        r"Got client allow request for {}".format(sta_mac))
 
         debug("Send client association control request to all other (BLOCK) ")
-        self.beerocks_cli_command('client_disallow {} {}'.format(sta_mac, self.agents[0].radios[0].mac))
+        self.beerocks_cli_command('client_disallow {} {}'.format(sta_mac, env.agents[0].radios[0].mac))
         time.sleep(1)
 
         debug("Confirming Client Association Control Request message was received (BLOCK)")
@@ -470,21 +424,21 @@ class TestFlows:
 
     def test_client_steering_mandate(self):
         debug("Send topology request to agent 1")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x0002)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x0002)
         time.sleep(1)
         debug("Confirming topology query was received")
         self.check_log(self.repeater1, "agent", "TOPOLOGY_QUERY_MESSAGE")
 
         debug("Send topology request to agent 2")
-        self.controller.dev_send_1905(self.agents[1].mac, 0x0002)
+        env.controller.dev_send_1905(env.agents[1].mac, 0x0002)
         time.sleep(1)
         debug("Confirming topology query was received")
         self.check_log(self.repeater2, "agent", "TOPOLOGY_QUERY_MESSAGE")
 
         debug("Send Client Steering Request message for Steering Mandate to CTT Agent1")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8014,
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8014,
             tlv(0x9B, 0x001b, "{%s 0xe0 0x0000 0x1388 0x01 {0x000000110022} 0x01 {%s 0x73 0x24}}" %
-                (self.agents[0].radios[0].mac, self.agents[1].radios[0].mac)))
+                (env.agents[0].radios[0].mac, env.agents[1].radios[0].mac)))
         time.sleep(1)
         debug("Confirming Client Steering Request message was received - mandate")
         self.check_log(self.repeater1, "agent_wlan0", "Got steer request")
@@ -493,13 +447,13 @@ class TestFlows:
         self.check_log(self.gateway, "controller", "CLIENT_STEERING_BTM_REPORT_MESSAGE")
 
         debug("Checking BTM Report source bssid")
-        self.check_log(self.gateway, "controller", "BTM_REPORT from source bssid %s" % self.agents[0].radios[0].mac)
+        self.check_log(self.gateway, "controller", "BTM_REPORT from source bssid %s" % env.agents[0].radios[0].mac)
 
         debug("Confirming ACK message was received")
         self.check_log(self.repeater1, "agent_wlan0", "ACK_MESSAGE")
 
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8014,
-            tlv(0x9B, 0x000C, "{%s 0x00 0x000A 0x0000 0x00}" % self.agents[0].radios[0].mac))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8014,
+            tlv(0x9B, 0x000C, "{%s 0x00 0x000A 0x0000 0x00}" % env.agents[0].radios[0].mac))
         time.sleep(1)
         debug("Confirming Client Steering Request message was received - Opportunity")
         self.check_log(self.repeater1, "agent_wlan0", "CLIENT_STEERING_REQUEST_MESSAGE")
@@ -596,7 +550,7 @@ class TestFlows:
         debug("Connect dummy STA to wlan0")
         self.send_bwl_event(self.repeater1, "wlan0", "EVENT AP-STA-CONNECTED {}".format(sta_mac))
         debug("Send steer request ")
-        self.beerocks_cli_command("steer_client {} {}".format(sta_mac, self.agents[0].radios[1].mac))
+        self.beerocks_cli_command("steer_client {} {}".format(sta_mac, env.agents[0].radios[1].mac))
         time.sleep(1)
 
         debug("Confirming Client Association Control Request message was received (UNBLOCK)")
@@ -633,7 +587,7 @@ class TestFlows:
 
     def test_client_steering_policy(self):
         debug("Send client steering policy to agent 1")
-        mid = self.controller.dev_send_1905(self.agents[0].mac, 0x8003,
+        mid = env.controller.dev_send_1905(env.agents[0].mac, 0x8003,
             tlv(0x89, 0x000C, "{0x00 0x00 0x01 {0x112233445566 0x01 0xFF 0x14}}"))
         time.sleep(1)
         debug("Confirming client steering policy has been received on agent")
@@ -645,13 +599,13 @@ class TestFlows:
 
     def test_client_association(self):
         debug("Send topology request to agent 1")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x0002)
+        env.controller.dev_send_1905(env.agents[0].mac, 0x0002)
         debug("Confirming topology query was received")
         self.check_log(self.repeater1, "agent", r"TOPOLOGY_QUERY_MESSAGE")
 
         debug("Send client association control message")
-        self.controller.dev_send_1905(self.agents[0].mac, 0x8016,
-            tlv(0x9D, 0x000F, "{%s 0x00 0x1E 0x01 {0x000000110022}}" % self.agents[0].radios[0].mac))
+        env.controller.dev_send_1905(env.agents[0].mac, 0x8016,
+            tlv(0x9D, 0x000F, "{%s 0x00 0x1E 0x01 {0x000000110022}}" % env.agents[0].radios[0].mac))
 
         debug("Confirming client association control message has been received on agent")
         # check that both radio agents received it,in the future we'll add a check to verify which
@@ -663,7 +617,7 @@ class TestFlows:
         self.check_log(self.gateway, "controller", r"ACK_MESSAGE")
 
     def test_higher_layer_data_payload_trigger(self):
-        mac_gateway_hex = '0x' + self.controller.mac.replace(':', '')
+        mac_gateway_hex = '0x' + env.controller.mac.replace(':', '')
         debug("mac_gateway_hex = " + mac_gateway_hex)
         payload = 199 * (mac_gateway_hex + " ") + mac_gateway_hex
 
@@ -671,7 +625,7 @@ class TestFlows:
         # MCUT sends Higher Layer Data message to CTT Agent1 by providing:
         # Higher layer protocol = "0x00"
         # Higher layer payload = 200 concatenated copies of the ALID of the MCUT (1200 octets)
-        mid = self.controller.dev_send_1905(self.agents[0].mac, 0x8018,
+        mid = env.controller.dev_send_1905(env.agents[0].mac, 0x8018,
                                             tlv(0xA0, 0x04b1, "{0x00 %s}" % payload))
 
         debug("Confirming higher layer data message was received in the agent")
@@ -687,7 +641,7 @@ class TestFlows:
         self.check_log(self.gateway, "controller", r"ACK_MESSAGE, mid=0x{:04x}".format(mid))
 
     def test_topology(self):
-        mid = self.controller.dev_send_1905(self.agents[0].mac, 0x0002)
+        mid = env.controller.dev_send_1905(env.agents[0].mac, 0x0002)
         debug("Confirming topology query was received")
         self.check_log(self.repeater1, "agent", r"TOPOLOGY_QUERY_MESSAGE")
 

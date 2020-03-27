@@ -5,6 +5,7 @@
 # See LICENSE file for more details.
 ###############################################################
 
+import json
 import os
 import re
 import subprocess
@@ -57,6 +58,48 @@ class Radio:
         self.mac = mac
 
 
+class Sniffer:
+    '''Captures packets on an interface.'''
+    def __init__(self, interface: str):
+        self.interface = interface
+        self.tcpdump_proc = None
+
+    def start(self, outputfile_basename):
+        '''Start tcpdump if enabled by config.'''
+        if opts.tcpdump:
+            debug("Starting tcpdump, output file {}.pcap".format(outputfile_basename))
+            outputfile = os.path.join(opts.tcpdump_dir, outputfile_basename) + ".pcap"
+            command = ["tcpdump", "-i", self.interface, "-w", outputfile]
+            self.tcpdump_proc = subprocess.Popen(command, stderr=subprocess.PIPE)
+            # tcpdump takes a while to start up. Wait for the appropriate output before continuing.
+            # poll() so we exit the loop if tcpdump terminates for any reason.
+            while not self.tcpdump_proc.poll():
+                line = self.tcpdump_proc.stderr.readline()
+                debug(line.decode()[:-1])  # strip off newline
+                if line.startswith(b"tcpdump: listening on " + self.interface.encode()):
+                    # Make sure it doesn't block due to stderr buffering
+                    self.tcpdump_proc.stderr.close()
+                    break
+            else:
+                err("tcpdump terminated")
+                self.tcpdump_proc = None
+
+    def stop(self):
+        '''Stop tcpdump if it is running.'''
+        if self.tcpdump_proc:
+            status("Terminating tcpdump")
+            self.tcpdump_proc.terminate()
+            self.tcpdump_proc = None
+
+# The following variables are initialized as None, and have to be set when a concrete test
+# environment is started.
+wired_sniffer = None
+controller = None
+agents = []
+
+
+# Concrete implementation with docker
+
 class AlEntityDocker(AlEntity):
     '''Docker implementation of AlEntity.
 
@@ -103,43 +146,51 @@ class RadioDocker(Radio):
         super().__init__(agent, mac)
 
 
-class TestEnvironment:
-    '''Specification of the test environment.
+def launch_environment_docker(unique_id: str, skip_init: bool = False):
+    docker_network = 'prplMesh-net-{}'.format(unique_id)
+    docker_network_inspect_cmd = ('docker', 'network', 'inspect', docker_network)
+    inspect_result = subprocess.run(docker_network_inspect_cmd, stdout=subprocess.PIPE)
+    if inspect_result.returncode != 0:
+        # Assume network doesn't exist yet. Create it.
+        # This is normally done by test_gw_repeater.sh, but we need it earlier to be able to start
+        # tcpdump
+        # Raise an exception if it fails.
+        subprocess.run(('docker', 'network', 'create', docker_network), check=True,
+                        stdout=subprocess.DEVNULL)
+        # Inspect again, now raise if it fails.
+        inspect_result = subprocess.run(docker_network_inspect_cmd, check=True,
+                                        stdout=subprocess.PIPE)
 
-    This is allows access to the interfaces of the test environment. It is created as a singleton
-    object that is populated with implementations of the abstract classes defining the different
-    components.
-    '''
-    def __init__(self, sniffer_interface: str):
-        self.sniffer_interface = sniffer_interface
-        self.tcpdump_proc = None
+    inspect = json.loads(inspect_result.stdout)
+    prplmesh_net = inspect[0]
+    # podman adds a 'plugins' indirection that docker doesn't have.
+    if 'plugins' in prplmesh_net:
+        bridge = prplmesh_net['plugins'][0]['bridge']
+    else:
+        # docker doesn't report the interface name of the bridge. So format it based on the ID.
+        bridge_id = prplmesh_net['Id']
+        bridge = 'br-' + bridge_id[:12]
 
-    def tcpdump_start(self, outputfile_basename):
-        '''Start tcpdump if enabled by config.'''
-        if opts.tcpdump:
-            debug("Starting tcpdump, output file {}.pcap".format(outputfile_basename))
-            outputfile = os.path.join(opts.tcpdump_dir, outputfile_basename) + ".pcap"
-            command = ["tcpdump", "-i", self.sniffer_interface, "-w", outputfile]
-            self.tcpdump_proc = subprocess.Popen(command, stderr=subprocess.PIPE)
-            # tcpdump takes a while to start up. Wait for the appropriate output before continuing.
-            # poll() so we exit the loop if tcpdump terminates for any reason.
-            while not self.tcpdump_proc.poll():
-                line = self.tcpdump_proc.stderr.readline()
-                debug(line.decode()[:-1])  # strip off newline
-                if line.startswith(b"tcpdump: listening on " + self.sniffer_interface.encode()):
-                    # Make sure it doesn't block due to stderr buffering
-                    self.tcpdump_proc.stderr.close()
-                    break
-            else:
-                err("tcpdump terminated")
-                self.tcpdump_proc = None
+    global wired_sniffer
+    wired_sniffer = Sniffer(bridge)
 
-    def tcpdump_kill(self):
-        '''Stop tcpdump if it is running.'''
-        if self.tcpdump_proc:
-            status("Terminating tcpdump")
-            self.tcpdump_proc.terminate()
-            self.tcpdump_proc = None
+    if not skip_init:
+        wired_sniffer.start('init')
+        try:
+            subprocess.check_call((os.path.join(self.rootdir, "tests", "test_gw_repeater.sh"),
+                                    "-f", "-u", unique_id, "-g", self.gateway,
+                                    "-r", self.repeater1, "-r", self.repeater2, "-d", "7"))
+        finally:
+            wired_sniffer.stop()
 
+    global controller, agents
+    controller = AlEntityDocker('gateway-' + unique_id, True)
+    agents = (AlEntityDocker('repeater1-' + unique_id), AlEntityDocker('repeater2-' + unique_id))
 
-environment = None
+    debug('controller: {}'.format(controller.mac))
+    debug('agent1: {}'.format(agents[0].mac))
+    debug('agent1 wlan0: {}'.format(agents[0].radios[0].mac))
+    debug('agent1 wlan2: {}'.format(agents[0].radios[1].mac))
+    debug('agent2: {}'.format(agents[1].mac))
+    debug('agent2 wlan0: {}'.format(agents[1].radios[0].mac))
+    debug('agent2 wlan2: {}'.format(agents[1].radios[1].mac))
