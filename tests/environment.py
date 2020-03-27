@@ -114,10 +114,11 @@ class TestEnvironment:
         self.sniffer_interface = sniffer_interface
         self.tcpdump_proc = None
 
-    def tcpdump_start(self, outputfile):
+    def tcpdump_start(self, outputfile_basename):
         '''Start tcpdump if enabled by config.'''
         if opts.tcpdump:
-            debug("Starting tcpdump, output file {}".format(outputfile))
+            debug("Starting tcpdump, output file {}.pcap".format(outputfile_basename))
+            outputfile = os.path.join(opts.tcpdump_dir, outputfile_basename) + ".pcap"
             command = ["tcpdump", "-i", self.sniffer_interface, "-w", outputfile]
             self.tcpdump_proc = subprocess.Popen(command, stderr=subprocess.PIPE)
             # tcpdump takes a while to start up. Wait for the appropriate output before continuing.

@@ -76,10 +76,6 @@ class TestFlows:
         self.running = test
         status(test + " starting")
 
-    def tcpdump_start(self):
-        env.environment.tcpdump_start(os.path.join(self.rootdir, 'logs',
-                                                   'test_{}.pcap'.format(self.running)))
-
     def docker_command(self, device: str, *command: str) -> bytes:
         '''Execute `command` in docker container `device` and return its output.'''
         return subprocess.check_output(("docker", "exec", device) + command)
@@ -147,7 +143,7 @@ class TestFlows:
         env.environment = env.TestEnvironment(bridge)
 
         if not skip_init:
-            self.tcpdump_start()
+            env.environment.tcpdump_start('init')
             try:
                 subprocess.check_call((os.path.join(self.rootdir, "tests", "test_gw_repeater.sh"),
                                        "-f", "-u", unique_id, "-g", self.gateway,
@@ -216,11 +212,12 @@ class TestFlows:
         if not tests:
             tests = self.tests
         for test in tests:
+            test_full = 'test_' + test
             self.start_test(test)
-            self.tcpdump_start()
+            env.environment.tcpdump_start(test_full)
             self.check_error = 0
             try:
-                getattr(self, 'test_' + test)()
+                getattr(self, test_full)()
             finally:
                 env.environment.tcpdump_kill()
             if self.check_error != 0:
@@ -721,6 +718,7 @@ if __name__ == '__main__':
 
     opts.verbose = options.verbose
     opts.tcpdump = options.tcpdump
+    opts.tcpdump_dir = os.path.join(t.rootdir, 'logs')
     opts.stop_on_failure = options.stop_on_failure
 
     t.init(options.unique_id, options.skip_init)
