@@ -67,11 +67,11 @@ public:
     cli_bml(std::string beerocks_conf_path_);
     virtual ~cli_bml();
 
-    bool connect();
-    void disconnect();
-    bool is_connected();
-    bool start() { return true; };
-    void stop(){};
+    bool connect() override;
+    void disconnect() override;
+    bool is_connected() override;
+    bool start() override { return true; };
+    void stop() override{};
     void print_help(bool print_header = true) { help(print_header); }
     int get_onboarding_status();
     bool is_pending_response();
@@ -80,7 +80,7 @@ public:
 
 private:
     // Help functions
-    void setFunctionsMapAndArray();
+    void setFunctionsMapAndArray() override;
     void printBmlReturnVals(const std::string &func_name, int ret_val);
 
     static void map_query_cb(const struct BML_NODE_ITER *node_iter, bool to_console);

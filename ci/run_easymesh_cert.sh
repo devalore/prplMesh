@@ -22,9 +22,10 @@ usage() {
     echo "      -b|--branch - prplmesh branch to use (default master latest)"
     echo "      -o|--log-folder - path to put the logs to (make sure it does not contain previous logs)."
     echo "      -e|--easymesh-cert - path to easymesh_cert repository (default ../easymesh_cert)"
-    echo "      -u|--upload - upload results"
+    echo "      --owncloud-upload - whether or not to upload results to owncloud. (default: false)"
+    echo "      --owncloud-path - relative path in the owncloud server to upload results to. (default: $OWNCLOUD_PATH)"
     echo "      -v|--verbose - set verbosity (ucc logs also redirected to stdout)"
-    echo "      -s|--ssh - target device ssh name (defined in ~/.ssh/config). Default is $TARGET_DEVICE_SSH"
+    echo "      -s|--ssh - target device ssh name (defined in ~/.ssh/config). (default: $TARGET_DEVICE_SSH)"
     echo "'test' can either be a test name, or the path to a file containing"
     echo " test names (newline-separated)."
     echo
@@ -34,10 +35,15 @@ usage() {
     echo "$(basename "$0") MAP-5.3.1 tests/all_controller_test.txt"
     echo ""
     echo "The default is to run all agent certification tests."
+    echo ""
+    echo "Credentials for uploading to owncloud are taken from $HOME/.netrc"
+    echo "Make sure it has a line like this:"
+    echo "  machine ftp.essensium.com login <user> password <password>"
+    echo ""
 }
 
 main() {
-     OPTS=$(getopt -o 'hb:o:e:u:s:v' --long help,branch:,log-folder:,easymesh-cert:,upload:,ssh:verbose -n 'parse-options' -- "$@")
+    OPTS=$(getopt -o 'hb:o:e:s:v' --long help,branch:,log-folder:,easymesh-cert:,owncloud-upload,owncloud-path:,ssh:,verbose -n 'parse-options' -- "$@")
 
     if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; usage; exit 1 ; fi
 
@@ -50,7 +56,8 @@ main() {
             -o | --log-folder)      LOG_FOLDER="$2"; shift 2;;
             -v | --verbose)         VERBOSE=true; VERBOSE_OPT="-v"; shift;;
             -e | --easymesh-cert)   EASYMESH_CERT_PATH="$2"; shift 2;;
-            -u | --upload)          UPLOAD_PATH="$2"; shift 2;;
+            --owncloud-upload)      OWNCLOUD_UPLOAD=true; shift;;
+            --owncloud-path)        OWNCLOUD_PATH="$2"; shift 2;;
             -s | --ssh)             TARGET_DEVICE_SSH="$2"; shift 2;;
             -- ) shift; break ;;
             * ) err "unsupported argument $1"; usage; exit 1;;
@@ -65,38 +72,42 @@ main() {
     info "Tests to run: $TESTS"
 
     info "download latest ipk from branch $BRANCH"
-    run "$TOOLS_PATH"/download_ipk.sh --branch "$BRANCH"
+    "$TOOLS_PATH"/download_ipk.sh --branch "$BRANCH" ${VERBOSE:+ -v} || {
+        err "Failed to download prplmesh.ipk, abort"
+        exit 1
+    }
     
     info "prplmesh build info:"
     cat "$PRPLMESH_BUILDINFO"
 
     info "deploy latest ipk to $TARGET_DEVICE_SSH"
-    run "$TOOLS_PATH"/deploy_ipk.sh "$TARGET_DEVICE_SSH" "$IPK"
+    "$TOOLS_PATH"/deploy_ipk.sh "$TARGET_DEVICE_SSH" "$PRPLMESH_IPK" || {
+        err "Failed to deploy prplmesh.ipk, abort"
+        exit 1
+    }
 
     info "Start running tests"
-    run "$EASYMESH_CERT_PATH"/run_test_file.sh -o "$LOG_FOLDER" -d "$TARGET_DEVICE" "$TESTS" "$VERBOSE_OPT"
+    "$EASYMESH_CERT_PATH"/run_test_file.sh -o "$LOG_FOLDER" -d "$TARGET_DEVICE" "$TESTS" ${VERBOSE:+ -v}
+    mv "$PRPLMESH_IPK" "$LOG_FOLDER"
+    mv "$PRPLMESH_BUILDINFO" "$LOG_FOLDER"
 
-    passed=$(find "$LOG_FOLDER"/PASS/ -maxdepth 1 -type d -printf x | wc -c)
-    failed=$(find "$LOG_FOLDER"/FAIL/ -maxdepth 1 -type d -printf x | wc -c)
-    total=$((failed+passed))
-    if [ "$VERBOSE" = "true" ]; then
-        info "Passed tests:"
-        ls "$LOG_FOLDER/PASS"
-        info "Failed tests:"
-        ls "$LOG_FOLDER/FAIL"
+    if [ -n "$OWNCLOUD_UPLOAD" ]; then
+        info "Uploading $LOG_FOLDER to $OWNCLOUD_PATH"
+        "$scriptdir"/upload_to_owncloud.sh "$OWNCLOUD_PATH" "$LOG_FOLDER" || {
+            err "Failed to upload $LOG_FOLDER"
+            exit 1
+        }
     fi
-    info "Passed $passed/$total"
-    info "Uploading results to $UPLOAD_PATH not supported yet"
-    # TODO upload results
     info "done"
 }
 
 BRANCH=master
-IPK=prplmesh.ipk
-PRPLMESH_BUILDINFO=prplmesh.buildinfo
+PRPLMESH_IPK=prplmesh.ipk
+PRPLMESH_BUILDINFO=prplmesh_buildinfo.txt
 TOOLS_PATH="$rootdir/tools"
 EASYMESH_CERT_PATH=$(realpath "$rootdir/../easymesh_cert")
 TARGET_DEVICE="netgear-rax40"
 TARGET_DEVICE_SSH="$TARGET_DEVICE-1"
+OWNCLOUD_PATH=Nightly/agent_certification
 
 main "$@"

@@ -180,6 +180,7 @@ int utils::convert_bandwidth_to_int(beerocks::eWiFiBandwidth bandwidth)
     case beerocks::BANDWIDTH_80:
         bandwidth_int = 80;
         break;
+    case beerocks::BANDWIDTH_80_80:
     case beerocks::BANDWIDTH_160:
         bandwidth_int = 160;
         break;
@@ -199,6 +200,7 @@ std::string utils::convert_channel_ext_above_to_string(bool channel_ext_above_se
         break;
     case beerocks::BANDWIDTH_40:
     case beerocks::BANDWIDTH_80:
+    case beerocks::BANDWIDTH_80_80:
     case beerocks::BANDWIDTH_160:
         if (channel_ext_above_secondary) {
             return "H";
@@ -208,54 +210,6 @@ std::string utils::convert_channel_ext_above_to_string(bool channel_ext_above_se
     default:
         return std::string();
     }
-}
-
-int utils::wifi_channel_to_freq(int channel)
-{
-    if (channel == 14)
-        return 2484;
-
-    if (channel < 14)
-        return (channel * 5) + 2407;
-
-    return (channel + 1000) * 5;
-}
-
-uint16_t utils::wifi_channel_to_vht_center_freq(int channel, int bandwidth,
-                                                bool channel_ext_above_secondary)
-{
-    int freq = wifi_channel_to_freq(channel);
-    uint16_t vht_center_freq;
-    switch (bandwidth) {
-    case 20:
-        vht_center_freq = freq;
-        break;
-    case 40:
-        vht_center_freq = freq + (channel_ext_above_secondary ? 10 : -10);
-        break;
-    case 80:
-        vht_center_freq = freq + (channel_ext_above_secondary ? 30 : -30);
-        break;
-    case 160:
-        vht_center_freq = freq + (channel_ext_above_secondary ? 70 : -70);
-        break;
-    default:
-        LOG(ERROR) << "invalid bandwidth!";
-        return -1;
-    }
-    return vht_center_freq;
-}
-
-int utils::wifi_freq_to_channel(int freq)
-{
-    if (freq == 2484)
-        return 14;
-
-    if (freq < 2484)
-        return (freq - 2407) / 5;
-
-    /* FIXME: dot11ChannelStartingFactor (802.11-2007 17.3.8.3.2) */
-    return freq / 5 - 1000;
 }
 
 void utils::merge_list(std::vector<uint8_t> &ret, std::vector<uint8_t> &list)

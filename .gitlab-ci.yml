@@ -11,13 +11,28 @@ cppcheck:
   script:
     # cppcheck runs in the alpine image because every new release brings useful improvements
     # (the versions from Ubuntu get old too quickly)
-    - tools/docker/static-analysis/cppcheck.sh common framework
+    - tools/docker/static-analysis/cppcheck.sh common framework controller
   artifacts:
     paths:
       - cppcheck_results.txt
     when: always
   tags:
     - docker
+
+flake8:
+  stage: build
+  image: pipelinecomponents/flake8:f087c4c
+  variables:
+      FLAKE8_FILES: "tests/capi.py"
+  script:
+    - flake8 --verbose $FLAKE8_FILES
+
+flake8-diff:
+  stage: build
+  image: pipelinecomponents/flake8:f087c4c
+  script:
+    - apk add --update --no-cache git
+    - git diff -U0 origin/master | flake8 --verbose --diff
 
 clang-format:
   extends: .in-prplmesh-builder

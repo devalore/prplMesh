@@ -190,7 +190,7 @@ static void bml_utils_dump_conn_map(
                    << utils::convert_channel_ext_above_to_string(
                           radio->channel_ext_above_secondary, (beerocks::eWiFiBandwidth)radio->bw)
                    << ", freq: "
-                   << std::to_string(beerocks::utils::wifi_channel_to_freq(radio->channel)) << "MHz"
+                   << std::to_string(son::wireless_utils::channel_to_freq(radio->channel)) << "MHz"
                    << std::endl;
 
                 // VAP
@@ -292,7 +292,7 @@ SocketClient *cli_bml::m_analyzer_socket = nullptr;
 
 cli_bml::cli_bml(std::string beerocks_conf_path_)
 {
-    setFunctionsMapAndArray();
+    cli_bml::setFunctionsMapAndArray();
     beerocks_conf_path = beerocks_conf_path_;
 
     // Set BML easylogging context
@@ -306,7 +306,7 @@ cli_bml::cli_bml(std::string beerocks_conf_path_)
     select.setTimeout(&tval);
 }
 
-cli_bml::~cli_bml() { disconnect(); }
+cli_bml::~cli_bml() { cli_bml::disconnect(); }
 
 bool cli_bml::connect()
 {
@@ -1484,8 +1484,8 @@ int cli_bml::get_master_slave_versions()
 
 int cli_bml::enable_client_roaming(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_client_roaming(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_client_roaming(ctx, &result)
                              : bml_set_client_roaming(ctx, isEnable);
     printBmlReturnVals("bml_enable_client_roaming", ret);
     if (isEnable < 0 && ret == BML_RET_OK)
@@ -1495,8 +1495,8 @@ int cli_bml::enable_client_roaming(int8_t isEnable)
 
 int cli_bml::enable_legacy_client_roaming(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_legacy_client_roaming(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_legacy_client_roaming(ctx, &result)
                              : bml_set_legacy_client_roaming(ctx, isEnable);
     printBmlReturnVals("bml_enable_legacy_client_roaming", ret);
     if (isEnable < 0 && ret == BML_RET_OK)
@@ -1506,8 +1506,8 @@ int cli_bml::enable_legacy_client_roaming(int8_t isEnable)
 
 int cli_bml::enable_client_roaming_prefer_signal_strength(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_client_roaming_prefer_signal_strength(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_client_roaming_prefer_signal_strength(ctx, &result)
                              : bml_set_client_roaming_prefer_signal_strength(ctx, isEnable);
     printBmlReturnVals("bml_enable_client_roaming_prefer_signal_strength", ret);
     if (isEnable < 0 && ret == BML_RET_OK)
@@ -1517,8 +1517,8 @@ int cli_bml::enable_client_roaming_prefer_signal_strength(int8_t isEnable)
 
 int cli_bml::enable_client_band_steering(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_client_band_steering(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_client_band_steering(ctx, &result)
                              : bml_set_client_band_steering(ctx, isEnable);
     printBmlReturnVals("bml_enable_client_band_steering", ret);
     if (isEnable < 0 && ret == BML_RET_OK)
@@ -1528,7 +1528,7 @@ int cli_bml::enable_client_band_steering(int8_t isEnable)
 
 int cli_bml::enable_ire_roaming(int8_t isEnable)
 {
-    int result;
+    int result = -1;
     int ret =
         (isEnable < 0) ? bml_get_ire_roaming(ctx, &result) : bml_set_ire_roaming(ctx, isEnable);
     printBmlReturnVals("bml_enable_ire_roaming", ret);
@@ -1539,7 +1539,7 @@ int cli_bml::enable_ire_roaming(int8_t isEnable)
 
 int cli_bml::enable_load_balancer(int8_t isEnable)
 {
-    int result;
+    int result = -1;
     int ret =
         (isEnable < 0) ? bml_get_load_balancer(ctx, &result) : bml_set_load_balancer(ctx, isEnable);
     printBmlReturnVals("bml_load_balancer", ret);
@@ -1550,8 +1550,8 @@ int cli_bml::enable_load_balancer(int8_t isEnable)
 
 int cli_bml::enable_service_fairness(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_service_fairness(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_service_fairness(ctx, &result)
                              : bml_set_service_fairness(ctx, isEnable);
     printBmlReturnVals("bml_enable_service_fairness", ret);
     if (isEnable < 0 && ret == BML_RET_OK)
@@ -1561,7 +1561,7 @@ int cli_bml::enable_service_fairness(int8_t isEnable)
 
 int cli_bml::enable_dfs_reentry(int8_t isEnable)
 {
-    int result;
+    int result = -1;
     int ret =
         (isEnable < 0) ? bml_get_dfs_reentry(ctx, &result) : bml_set_dfs_reentry(ctx, isEnable);
     printBmlReturnVals("bml_enable_dfs_reentry", ret);
@@ -1572,8 +1572,8 @@ int cli_bml::enable_dfs_reentry(int8_t isEnable)
 
 int cli_bml::enable_certification_mode(int8_t isEnable)
 {
-    int result;
-    int ret = (isEnable < 0) ? bml_get_certification_mode(ctx, &result)
+    int result = -1;
+    int ret    = (isEnable < 0) ? bml_get_certification_mode(ctx, &result)
                              : bml_set_certification_mode(ctx, isEnable);
     printBmlReturnVals("bml_enable_certification_mode", ret);
     if (isEnable < 0 && ret == BML_RET_OK)

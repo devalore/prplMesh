@@ -15,67 +15,46 @@ import time
 from typing import Dict
 import json
 
-import send_CAPI_command
-from send_CAPI_command import tlv
+from capi import tlv, UCCSocket
 
 '''Regular expression to match a MAC address in a bytes string.'''
 RE_MAC = rb"(?P<mac>([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})"
 
-class map_vap:
+
+class MapVap:
     '''Represents a VAP in the connection map.'''
     def __init__(self, bssid: str, ssid: bytes):
         self.bssid = bssid
         self.ssid = ssid
 
-class map_radio:
+
+class MapRadio:
     '''Represents a radio in the connection map.'''
     def __init__(self, uid: str):
         self.uid = uid
         self.vaps = {}
 
     def add_vap(self, bssid: str, ssid: bytes):
-        vap = map_vap(bssid, ssid)
+        vap = MapVap(bssid, ssid)
         self.vaps[bssid] = vap
         return vap
 
-class map_device:
+
+class MapDevice:
     '''Represents a device in the connection map.'''
     def __init__(self, mac: str):
         self.mac = mac
         self.radios = {}
 
     def add_radio(self, uid: str):
-        radio = map_radio(uid)
+        radio = MapRadio(uid)
         self.radios[uid] = radio
         return radio
 
-class test_flows:
+
+class TestFlows:
     def __init__(self):
         self.tests = [attr[len('test_'):] for attr in dir(self) if attr.startswith('test_')]
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--tcpdump", "-t", action='store_true', default=False,
-                            help="capture the packets during each test")
-        parser.add_argument("--verbose", "-v", action='store_true', default=False,
-                            help="report each action")
-        parser.add_argument("--stop-on-failure", "-s", action='store_true', default=False,
-                            help="exit on the first failure")
-        user = os.getenv("SUDO_USER", os.getenv("USER", ""))
-        parser.add_argument("--unique-id", "-u", type=str, default=user,
-                            help="append UNIQUE_ID to all container names, e.g. gateway-<UNIQUE_ID>; "
-                                 "defaults to {}".format(user))
-        parser.add_argument("--skip-init", action='store_true', default=False,
-                            help="don't start up the containers")
-        parser.add_argument("tests", nargs='*',
-                            help="tests to run; if not specified, run all tests: " + ", ".join(self.tests))
-        self.opts = parser.parse_args()
-
-        if not self.opts.tests:
-            self.opts.tests = self.tests
-
-        unknown_tests = [test for test in self.opts.tests if test not in self.tests]
-        if unknown_tests:
-            parser.error("Unknown tests: {}".format(', '.join(unknown_tests)))
 
         self.rootdir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), '..'))
         self.installdir = os.path.join(self.rootdir, 'build', 'install')
@@ -172,7 +151,7 @@ class test_flows:
         self.debug("  Response: " + res.decode('utf-8', errors='replace').strip())
         return res
 
-    def get_conn_map(self) -> Dict[str, map_device]:
+    def get_conn_map(self) -> Dict[str, MapDevice]:
         '''Get the connection map from the controller.'''
         conn_map = {}
         for line in self.beerocks_cli_command("bml_conn_map").split(b'\n'):
@@ -182,7 +161,7 @@ class test_flows:
             radio = re.match(rb' {16}RADIO: .* mac: ' + RE_MAC, line)
             vap = re.match(rb' {20}fVAP.* bssid: ' + RE_MAC + rb', ssid: (?P<ssid>.*)$', line)
             if bridge:
-                cur_agent = map_device(bridge.group('mac').decode('utf-8'))
+                cur_agent = MapDevice(bridge.group('mac').decode('utf-8'))
                 conn_map[cur_agent.mac] = cur_agent
             elif radio:
                 cur_radio = cur_agent.add_radio(radio.group('mac').decode('utf-8'))
@@ -190,7 +169,7 @@ class test_flows:
                 cur_radio.add_vap(vap.group('mac').decode('utf-8'), vap.group('ssid'))
         return conn_map
 
-    def open_CAPI_socket(self, device: str, controller: bool = False) -> send_CAPI_command.UCCSocket:
+    def open_CAPI_socket(self, device: str, controller: bool = False) -> UCCSocket:
         '''Open a CAPI socket to the agent (or controller, if set) on "device".'''
         # First, get the UCC port from the config file
         if controller:
@@ -202,7 +181,7 @@ class test_flows:
 
         device_ip_output = self.docker_command(device, 'ip', '-f', 'inet', 'addr', 'show', self.bridge_name)
         device_ip = re.search(r'inet (?P<ip>[0-9.]+)', device_ip_output.decode('utf-8')).group('ip')
-        return send_CAPI_command.UCCSocket(device_ip, ucc_port)
+        return UCCSocket(device_ip, ucc_port)
 
     def init(self):
         '''Initialize the tests.'''
@@ -770,8 +749,35 @@ class test_flows:
         self.debug("Confirming topology query was received")
         self.check_log(self.repeater1, "agent", r"TOPOLOGY_QUERY_MESSAGE")
 
+
 if __name__ == '__main__':
-    t = test_flows()
+    t = TestFlows()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tcpdump", "-t", action='store_true', default=False,
+                        help="capture the packets during each test")
+    parser.add_argument("--verbose", "-v", action='store_true', default=False,
+                        help="report each action")
+    parser.add_argument("--stop-on-failure", "-s", action='store_true', default=False,
+                        help="exit on the first failure")
+    user = os.getenv("SUDO_USER", os.getenv("USER", ""))
+    parser.add_argument("--unique-id", "-u", type=str, default=user,
+                        help="append UNIQUE_ID to all container names, e.g. gateway-<UNIQUE_ID>; "
+                             "defaults to {}".format(user))
+    parser.add_argument("--skip-init", action='store_true', default=False,
+                        help="don't start up the containers")
+    parser.add_argument("tests", nargs='*',
+                        help="tests to run; if not specified, run all tests: " + ", ".join(t.tests))
+    options = parser.parse_args()
+
+    if not options.tests:
+        options.tests = t.tests
+
+    unknown_tests = [test for test in options.tests if test not in t.tests]
+    if unknown_tests:
+        parser.error("Unknown tests: {}".format(', '.join(unknown_tests)))
+
+    t.opts = options
     t.init()
     if t.run_tests():
         sys.exit(1)
