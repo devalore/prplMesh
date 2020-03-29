@@ -13,6 +13,7 @@ This project is part of a wider collaboration between Prpl Foundation and Broadb
 
 Architecture documentation can be found in the [documentation](documentation/) folder.
 
+
 ## Requirements
 
 To build prplMesh, you need (on Ubuntu) the following packages:
