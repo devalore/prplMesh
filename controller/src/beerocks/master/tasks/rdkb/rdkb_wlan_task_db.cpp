@@ -129,6 +129,7 @@ rdkb_wlan_task_db::get_ap_config(const std::string &bssid)
     return std::make_pair(false, {});
 }
 
+
 std::unordered_map<std::string, std::shared_ptr<beerocks_message::sSteeringClientConfig>>
 rdkb_wlan_task_db::get_client_config_list(const std::string &bssid)
 {
